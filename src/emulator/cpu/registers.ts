@@ -1,5 +1,52 @@
-// Implements the CPU’s register file
-// Defines general‑purpose registers
-// Defines special registers (PC, IR, MAR, MDR, etc.)
-// Provides read/write helpers
+// registers.ts
+// Implementa os registos do processador
+// Define os registos de propósito geral
+// Define os registos especiais (PC, SP e RE)
+// Implementa funções de ajuda (ler, escrever, reset, obter os valores)
 
+export type RegisterName =
+  | "R0"  // Registo de propósito geral
+  | "R1"  // Registo de propósito geral
+  | "R2"  // Registo de propósito geral
+  | "R3"  // Registo de propósito geral
+  | "PC"  // Program counter, contém o endereço da próxima instrução a executar
+  | "SP"  // Stack pointer, apontador para o topo da pilha
+  | "RE";  // Registo de estado, registo onde estão guardados os bits de estado (flags)
+
+export class Registers {
+  private values: Record<RegisterName, number>
+  // Todos os registos são inicializados a 0 após um reset do processador
+  constructor() {
+    this.values = {
+      R0: 0,
+      R1: 0,
+      R2: 0,
+      R3: 0,
+      PC: 0,
+      SP: 0,
+      RE: 0,
+    }
+  }
+
+  // Lê o valor de um registo
+  read(name: RegisterName): number {
+    return this.values[name]
+  }
+
+  // Escreve um valor num registo
+  write(name: RegisterName, value:number): void {
+    this.values[name] = value & 0xFFFF // Cada palavra é de 16 bits
+  }
+
+  // Reset de todos os registos
+  reset(): void {
+    for (const key in this.values) {
+      this.values[key as RegisterName] = 0
+    }
+  }
+
+  // Obter valores de todos os registos
+  dump(): Record<RegisterName, number> {
+    return { ...this.values }
+  }
+}
