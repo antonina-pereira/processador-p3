@@ -15,13 +15,13 @@ describe("Registers", () => {
   })
 
   test("writes and reads register values", () => {
-    regs.write("R0", 123)
-    expect(regs.read("R0")).toBe(123)
+    regs.write("R1", 123)
+    expect(regs.read("R1")).toBe(123)
   })
 
   test("masks values to 16 bits", () => {
-    regs.write("R0", 0x1FFFF) // 17 bits
-    expect(regs.read("R0")).toBe(0xFFFF)
+    regs.write("R7", 0x1FFFF) // 17 bits
+    expect(regs.read("R7")).toBe(0xFFFF)
   })
 
   test("reset clears all registers", () => {

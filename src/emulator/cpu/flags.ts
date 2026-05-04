@@ -2,7 +2,6 @@
 // Define os bits de estado (O, N, C, Z, E)
 // Os bits de estado estão guardados nos 5 bits menos significativos do registo RE
 // Implementa funções para gerir os bits de estado
-// Usado por ALU e microcode
 
 import { Registers } from "./registers"
 
@@ -24,13 +23,34 @@ export const FlagBit: Record<FlagName, number> = {
 export class Flags {
   constructor(private registers: Registers) {}
 
+  get Z(): boolean {
+    return this.read("Z");
+  }
+
+  get N(): boolean {
+    return this.read("N");
+  }
+
+  get C(): boolean {
+    return this.read("C");
+  }
+
+  get O(): boolean {
+    return this.read("O");
+  }
+
+  get E(): boolean {
+    return this.read("E");
+  }
+
+
   private get RE(): number {
-    return this.registers.read("RE")
+    return this.registers.read("RE");
   }
 
   private set RE(value: number) {
     // mantém apenas 16 bits
-    this.registers.write("RE", value & 0xFFFF)
+    this.registers.setRE(value & 0xFFFF);
   }
 
   // Ler o valor de um bit de estado
