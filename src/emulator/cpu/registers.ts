@@ -1,39 +1,54 @@
 // registers.ts
-// Implementa os registos do processador
-// Define os registos de propósito geral
-// Define os registos especiais (PC, SP e RE)
-// Implementa funções de ajuda (ler, escrever, reset, obter os valores)
+// Defines general purpose and special registers
+// Implements helper functions
 
 export type RegisterName =
-  | "R0"  // Registo de propósito geral
-  | "R1"  // Registo de propósito geral
-  | "R2"  // Registo de propósito geral
-  | "R3"  // Registo de propósito geral
+  // R0-R7 multipurpose registers
+  | "R0"
+  | "R1"
+  | "R2"
+  | "R3"
   | "R4"
   | "R5"
   | "R6"
   | "R7"
-  | "PC"  // Program counter, contém o endereço da próxima instrução a executar
-  | "SP"  // Stack pointer, apontador para o topo da pilha
-  | "RE";  // Registo de estado, registo onde estão guardados os bits de estado (flags)
+  | "PC" // Program counter, has the address of the next instruction to execute
+  | "SP" // Stack pointer, points to the top of the stack
+  | "RE"; // State register, saves the flags
 
-export const RegisterIndex: Record<RegisterName, number> = {
-  R0: 0,
-  R1: 1,
-  R2: 2,
-  R3: 3,
-  R4: 4,
-  R5: 5,
-  R6: 6,
-  R7: 7,
-  PC: 8,
-  SP: 9,
-  RE: 10
+// Maps the register names to numerical values
+export const RegisterIndex: Record<number, RegisterName> = {
+  0: "R0",
+  1: "R1",
+  2: "R2",
+  3: "R3",
+  4: "R4",
+  5: "R5",
+  6: "R6",
+  7: "R7",
+  8: "PC",
+  9: "SP",
+  10: "RE",
 };
 
+// Inverse map from number to register name
+export const IndexToRegister: RegisterName[] = [
+  "R0",
+  "R1",
+  "R2",
+  "R3",
+  "R4",
+  "R5",
+  "R6",
+  "R7",
+  "PC",
+  "SP",
+  "RE",
+];
+
 export class Registers {
-  private values: Record<RegisterName, number>
-  // Todos os registos são inicializados a 0 após um reset do processador
+  private values: Record<RegisterName, number>;
+  // Initializes all registers to zero
   constructor() {
     this.values = {
       R0: 0,
@@ -47,16 +62,16 @@ export class Registers {
       PC: 0,
       SP: 0,
       RE: 0,
-    }
+    };
   }
 
-  // Lê o valor de um registo
+  // Reads a value from a register
   read(name: RegisterName): number {
-    return this.values[name]
+    return this.values[name];
   }
 
-  // Escreve um valor num registo
-  write(name: RegisterName, value:number): void {
+  // Writes a value to a register
+  write(name: RegisterName, value: number): void {
     // R0 is hardwired to 0
     if (name === "R0") {
       return;
@@ -68,28 +83,28 @@ export class Registers {
       return;
     }
 
-    this.values[name] = value & 0xFFFF // Cada palavra é de 16 bits
+    this.values[name] = value & 0xffff; // Each word is 16 bits
   }
 
   setPC(value: number): void {
     // Used internally by the CPU
-    this.values.PC = value & 0xFFFF;
+    this.values.PC = value & 0xffff;
   }
 
   setRE(value: number): void {
     // Used internally by ALU operations
-    this.values.RE = value & 0xFFFF;
+    this.values.RE = value & 0xffff;
   }
 
-  // Reset de todos os registos
+  // Resets all registers
   reset(): void {
     for (const key in this.values) {
-      this.values[key as RegisterName] = 0
+      this.values[key as RegisterName] = 0;
     }
   }
 
-  // Obter valores de todos os registos
+  // Gets the values for all registers
   dump(): Record<RegisterName, number> {
-    return { ...this.values }
+    return { ...this.values };
   }
 }

@@ -1,7 +1,7 @@
 // memory.ts
-
-export const WORD_SIZE = 2;              // bytes per word
-export const MEMORY_SIZE = 0x10000;      // 64 KB address space
+// models and manages memory
+export const WORD_SIZE = 2; // bytes per word
+export const MEMORY_SIZE = 0x10000; // 64 KB address space
 export const MAX_ADDRESS = MEMORY_SIZE - 1;
 
 // Memory is modeled as a Uint16Array (word‑addressable)
@@ -13,26 +13,26 @@ export class Memory {
     this.data = new Uint8Array(size);
   }
 
-  // Assegurar que um endereço está dentro dos limites
+  // Make sure an address is within the limits
   private checkAddress(addr: number) {
     if (addr < 0 || addr > MAX_ADDRESS) {
       throw new Error(`Memory access out of bounds: 0x${addr.toString(16)}`);
     }
   }
 
-  // Ler um byte da memória
+  // Read a byte from memory
   readByte(addr: number): number {
     this.checkAddress(addr);
     return this.data[addr];
   }
 
-  // Escrever um byte na memória
+  // Write a byte in memory
   writeByte(addr: number, value: number) {
     this.checkAddress(addr);
-    this.data[addr] = value & 0xFF;
+    this.data[addr] = value & 0xff;
   }
 
-  // Ler uma palavra de 16-bits
+  // Read 16-bit word
   readWord(addr: number): number {
     this.checkAddress(addr);
     this.checkAddress(addr + 1);
@@ -42,16 +42,16 @@ export class Memory {
     return (hi << 8) | lo;
   }
 
-  // Escrever uma palavra de 16-bits
+  // Write a 16-bit word
   writeWord(addr: number, value: number) {
     this.checkAddress(addr);
     this.checkAddress(addr + 1);
 
-    this.data[addr] = (value >> 8) & 0xFF;
-    this.data[addr + 1] = value & 0xFF;
+    this.data[addr] = (value >> 8) & 0xff;
+    this.data[addr + 1] = value & 0xff;
   }
 
-  // Carregar um programa na memória num endereço específico
+  // Load a program to memory in a specified address
   loadProgram(words: number[], origin: number = 0) {
     let addr = origin;
     for (const w of words) {
@@ -60,17 +60,19 @@ export class Memory {
     }
   }
 
-  // Obter valores na memória
+  // Retrieve values from memory
   dump(start: number, end: number): string {
     const lines: string[] = [];
     for (let addr = start; addr <= end; addr += 2) {
       const word = this.readWord(addr);
-      lines.push(`0x${addr.toString(16).padStart(4, "0")}: 0x${word.toString(16).padStart(4, "0")}`);
+      lines.push(
+        `0x${addr.toString(16).padStart(4, "0")}: 0x${word.toString(16).padStart(4, "0")}`,
+      );
     }
     return lines.join("\n");
   }
 
-  // Reset da memória a zero
+  // Reset memory to zero
   clear() {
     this.data.fill(0);
   }

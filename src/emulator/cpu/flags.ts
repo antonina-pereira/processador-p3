@@ -1,28 +1,34 @@
 // flags.ts
-// Define os bits de estado (O, N, C, Z, E)
-// Os bits de estado estão guardados nos 5 bits menos significativos do registo RE
-// Implementa funções para gerir os bits de estado
+// Defines the flags (O, N, C, Z, E)
+// Flags are stored in the 5 least significant bits of RE
+// Defines helper functions
 
-import { Registers } from "./registers"
+import { Registers } from "./registers";
 
 export type FlagName =
-  | "O" // Overflow, indica que o resultado da última operação aritmética excede a capacidade do operando destino
-  | "N" // Negative, indica que o resultado da última operação foi negativo
-  | "C" // Carry, indica que a última operação gerou um bit de transporte para além da última posição do operando destino
-  | "Z" // Zero, indica que o resultado da última operação foi Zero
-  | "E" // Enable interrupts, habilita ou não as interrupções
+  | "O" // Overflow
+  | "N" // Negative
+  | "C" // Carry
+  | "Z" // Zero
+  | "E"; // Enable interrupts
 
+// Maps the flags to the bits
 export const FlagBit: Record<FlagName, number> = {
-  O: 1,
-  N: 2,
-  C: 3,
-  Z: 4,
-  E: 5,
-}
+  O: 0,
+  N: 1,
+  C: 2,
+  Z: 3,
+  E: 4,
+};
 
 export class Flags {
-  constructor(private registers: Registers) {}
+  private registers: Registers;
 
+  constructor(registers: Registers) {
+    this.registers = registers;
+  }
+
+  // Gets a single flag
   get Z(): boolean {
     return this.read("Z");
   }
@@ -43,58 +49,68 @@ export class Flags {
     return this.read("E");
   }
 
-
+  // Gets the values of the flags
   private get RE(): number {
     return this.registers.read("RE");
   }
 
+  // Stores the flag value in RE
   private set RE(value: number) {
-    // mantém apenas 16 bits
-    this.registers.setRE(value & 0xFFFF);
+    // Keeps only 16 bits
+    this.registers.setRE(value & 0xffff);
   }
 
-  // Ler o valor de um bit de estado
+  // Reads the values of a flag
   read(name: FlagName): boolean {
-    const bit = FlagBit[name]
-    return ((this.RE >> bit) & 1) === 1
+    const bit = FlagBit[name];
+    return ((this.RE >> bit) & 1) === 1;
   }
 
-  // Alterar o valor de um bit de estado
+  // Changes the value of a flag
   write(name: FlagName, value: boolean): void {
-    const bit = FlagBit[name]
+    const bit = FlagBit[name];
     if (value) {
-      this.RE = this.RE | (1 << bit)
+      this.RE = this.RE | (1 << bit);
     } else {
-      this.RE = this.RE & ~(1 << bit)
+      this.RE = this.RE & ~(1 << bit);
     }
   }
 
-  // Reset de todos os bits de estado (os 5 bits menos significativos)
+  // Resets all flags
   reset(): void {
-    this.RE = this.RE & ~0b11111
+    this.RE = 0;
   }
 
-  // Actualizar todos os bits de estado de acordo com o resultado da última operação
-  update(result: number, overflow?: boolean, carry?: boolean): void {
-    // Overflow
-    if (overflow !== undefined) {
-      this.write("O", overflow)  
+  // Updates all flags according to the result of the last operation
+  update(result: number, opts?: { overflow?: boolean; carry?: boolean }): void {
+    // 16 bits mask
+    const value = result & 0xffff;
+
+    // Overflow - optional
+    if (opts?.overflow !== undefined) {
+      this.write("O", opts.overflow);
     }
 
     // Negative
-    this.write("N", (result & 0x8000) !== 0)
+    this.write("N", (value & 0x8000) !== 0);
 
-    // Carry
-    if (carry !== undefined) {
-      this.write("C", carry)
+    // Carry - optional
+    if (opts?.carry !== undefined) {
+      this.write("C", opts.carry);
     }
 
     // Zero
-    this.write("Z", result === 0)
+    this.write("Z", value === 0);
   }
-  
-  // Obter valores de todos os bits de estado
-  dump(): number {
-    return this.RE & 0b11111
+
+  // Gets the values of all flags
+  dump(): Record<FlagName, boolean> {
+    return {
+      O: this.O,
+      N: this.N,
+      C: this.C,
+      Z: this.Z,
+      E: this.E,
+    };
   }
 }

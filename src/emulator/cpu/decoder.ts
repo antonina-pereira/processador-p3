@@ -1,38 +1,54 @@
 // decoder.ts
 
-import { RegisterIndex } from "./registers"
-import { InstructionSet } from "./instruction-set";
-import { AddressingMode, OperandType, InstructionFormat } from "./instruction-format";
+import { InstructionSet, type InstructionDefinition } from "./instruction-set";
+import type { InstructionFormat } from "./instruction-format";
 import Memory from "./memory";
-import { ConditionNames } from "./conditions";
+import { ConditionCode } from "./conditions";
 
-const PC_REG = RegisterIndex.PC;
-const SP_REG = RegisterIndex.SP; 
-
-export interface DecodedOperand {
-  type: OperandType;
-  reg?: number;
-  value?: number;
-  address?: number;
-  displacement?: number;
-  baseReg?: number;
-  needsExt?: boolean;
+// Helper function: sign extension
+function signExtend6(value: number): number {
+  return value & 0x20 ? value | 0xffc0 : value;
 }
 
+// TYPES
+/**
+ * Represents a decoded operand after instruction decoding
+ *
+ * This is a discriminated union where each variant corresponds to a specific
+ * addressing mode supported by the P3 architecture
+ *
+ * Fully resolves the addressing mode
+ * Extracts all necessary fields (registers, values, displacement)
+ */
+export type DecodedOperand =
+  | { type: "register"; reg: number }
+  | { type: "immediate"; value: number }
+  | { type: "direct"; address: number }
+  | { type: "register_indirect"; reg: number }
+  | { type: "indexed"; reg: number; displacement: number }
+  | { type: "based"; baseReg: number; displacement: number }
+  | { type: "relative"; displacement: number };
+
+// Represents a fully encoded instruction ready for execution
 export interface DecodedInstruction {
   opcode: number;
   mnemonic: string;
   operands: DecodedOperand[];
-  size: number;          // bytes
-  condition?: number;    // for jump/branch
+  size: number; // Instruction size in bytes (used to increment PC)
+  condition?: ConditionCode; // For jump/branch
 }
 
-export function decodeInstruction(word: number, memory: Memory, pc: number): DecodedInstruction {
-  const opcode = (word >> 10) & 0x3F;
+// Decoded Instructions
+export function decodeInstruction(
+  word: number,
+  memory: Memory,
+  pc: number,
+): DecodedInstruction {
+  const opcode = (word >> 10) & 0x3f;
   const info = InstructionSet[opcode];
 
   if (!info) {
-    throw new Error(`Unknown opcode: ${opcode.toString(16)}`);
+    throw new Error("Unknown opcode: ${opcode.toString(16)}");
   }
 
   switch (info.format as InstructionFormat) {
@@ -51,250 +67,326 @@ export function decodeInstruction(word: number, memory: Memory, pc: number): Dec
     case "twoOp":
       return decodeTwoOp(opcode, info, word, memory, pc);
 
-    case "jmpAbsIncond":
-      return decodeJmpAbsIncond(opcode, info, word, memory, pc);
+    case "jmpAbsUncond":
+      return decodeJmpAbsUncond(opcode, info, word, memory, pc);
 
     case "jmpAbsCond":
       return decodeJmpAbsCond(opcode, info, word, memory, pc);
 
-    case "jmpRelIncond":
-      return decodeJmpRelIncod(opcode, info, word, pc);
+    case "jmpRelUncond":
+      return decodeJmpRelUncond(opcode, info, word);
 
     case "jmpRelCond":
-      return decodeJmpRelCond();
+      return decodeJmpRelCond(opcode, info, word);
 
     default:
-      throw new Error(`Unsupported format for opcode ${opcode.toString(16)}`);
+      throw new Error("Unsupported format for opcode ${opcode.toString(16)}");
   }
 }
 
-// Format decoders 
-function decodeZeroOp(opcode: number, info: any): DecodedInstruction {
+// Format decoders
+function decodeZeroOp(
+  opcode: number,
+  info: InstructionDefinition,
+): DecodedInstruction {
   return {
     opcode,
     mnemonic: info.mnemonic,
     operands: [],
-    size: 2
+    size: 2,
   };
 }
 
-function decodeZeroOpValue(opcode: number, info: any, word: number): DecodedInstruction {
-  const constant = word & 0x03FF;
+function decodeZeroOpValue(
+  opcode: number,
+  info: InstructionDefinition,
+  word: number,
+): DecodedInstruction {
+  const constant = word & 0x03ff;
 
   return {
     opcode,
     mnemonic: info.mnemonic,
-    operands: [
-      { type: OperandType.Immediate, value: constant }
-    ],
-    size: 2
+    operands: [{ type: "immediate", value: constant }],
+    size: 2,
   };
 }
 
-function decodeOneOp(opcode: number, info: any, word: number, memory: Memory, pc: number): DecodedInstruction {
-  const M = (word >> 4) & 0b11;
-  const regModo = word & 0xF;
+function decodeOneOp(
+  opcode: number,
+  info: InstructionDefinition,
+  word: number,
+  memory: Memory,
+  pc: number,
+): DecodedInstruction {
+  let size = 2;
+  let extOffset = 2;
 
-  const operand = decodeAddressing(M, regModo, memory, pc);
+  const M = (word >> 4) & 0b11;
+  const regMode = word & 0xf;
+
+  const { operand, extBytes } = decodeAddressing(
+    M,
+    regMode,
+    memory,
+    pc,
+    extOffset,
+  );
+
+  size += extBytes;
 
   return {
     opcode,
     mnemonic: info.mnemonic,
     operands: [operand],
-    size: 2 + (operand.needsExt ? 2 : 0)
+    size,
   };
 }
 
-function decodeOneOpValue(opcode: number, info: any, word: number, memory: Memory, pc: number): DecodedInstruction {
-  const positions = (word >> 6) & 0xF;
-  const M = (word >> 4) & 0b11;
-  const regModo = word & 0xF;
+function decodeOneOpValue(
+  opcode: number,
+  info: InstructionDefinition,
+  word: number,
+  memory: Memory,
+  pc: number,
+): DecodedInstruction {
+  let size = 2;
+  let extOffset = 2;
 
-  const operand = decodeAddressing(M, regModo, memory, pc);
+  const positions = (word >> 6) & 0xf;
+  const M = (word >> 4) & 0b11;
+  const regMode = word & 0xf;
+
+  const { operand, extBytes } = decodeAddressing(
+    M,
+    regMode,
+    memory,
+    pc,
+    extOffset,
+  );
+
+  size += extBytes;
 
   return {
     opcode,
     mnemonic: info.mnemonic,
-    operands: [
-      { type: OperandType.Immediate, value: positions },
-      operand
-    ],
-    size: 2 + (operand.needsExt ? 2 : 0)
+    operands: [{ type: "immediate", value: positions }, operand],
+    size,
   };
 }
 
-function decodeTwoOp(opcode: number, info: any, word: number, memory: Memory, pc: number): DecodedInstruction {
-  const S = (word >> 9) & 0x1;  
+function decodeTwoOp(
+  opcode: number,
+  info: InstructionDefinition,
+  word: number,
+  memory: Memory,
+  pc: number,
+): DecodedInstruction {
+  let size = 2;
+  let extOffset = 2;
+
   const regReg = (word >> 6) & 0b111;
   const M = (word >> 4) & 0b11;
-  const regModo = word & 0xF;
+  const regMode = word & 0xf;
 
   const op1: DecodedOperand = {
-    type: OperandType.Register,
-    reg: regReg
+    type: "register",
+    reg: regReg,
   };
 
-  const op2 = decodeAddressing(M, regModo, memory, pc);
+  const { operand: op2, extBytes } = decodeAddressing(
+    M,
+    regMode,
+    memory,
+    pc,
+    extOffset,
+  );
+
+  size += extBytes;
 
   return {
     opcode,
     mnemonic: info.mnemonic,
     operands: [op1, op2],
-    size: 2 + (op2.needsExt ? 2 : 0)
+    size,
   };
 }
 
-function decodeJmpAbsIncond(opcode: number, info: any, word: number, memory: Memory, pc: number): DecodedInstruction {
-  const cond = (word >> 6) & 0xF;
+function decodeJmpAbsUncond(
+  opcode: number,
+  info: InstructionDefinition,
+  word: number,
+  memory: Memory,
+  pc: number,
+): DecodedInstruction {
+  let size = 2;
+  let extOffset = 2;
+
   const M = (word >> 4) & 0b11;
-  const regModo = word & 0xF;
+  const regMode = word & 0xf;
 
-  const target = decodeAddressing(M, regModo, memory, pc);
+  const { operand, extBytes } = decodeAddressing(
+    M,
+    regMode,
+    memory,
+    pc,
+    extOffset,
+  );
 
-  return {
-    opcode,
-    mnemonic: info.mnemonic,
-    operands: [target],
-    condition: cond,
-    size: 2 + (target.needsExt ? 2 : 0)
-  };
-}
-
-function decodeJmpAbsCond(opcode: number, info: any, word: number, memory: Memory, pc: number): DecodedInstruction {
-
-  // Extract fields according to the JMP.cond format
-  const condition = (word >> 6) & 0xF;   // 4-bit condition code
-  const condName = ConditionNames[condition] ?? "UNKNOWN";
-
-  const M = (word >> 4) & 0b11; 
-  const regModo = word & 0xF; 
-
-  const target = decodeAddressing(M, regModo, memory, pc);
-
-  return {
-    opcode,
-    mnemonic: info.mnemonic,
-    condition,              
-    operands: [target], 
-    size: 2 + (target.needsExt ? 2 : 0)
-  };
-}
-
-function decodeJmpRelIncond(opcode: number, info: any, word: number, pc: number): DecodedInstruction {
-  const cond = (word >> 6) & 0xF;
-  const disp = word & 0x3F; 
-
-  const operand: DecodedOperand = {
-    type: OperandType.Relative,
-    displacement: disp
-  };
+  size += extBytes;
 
   return {
     opcode,
     mnemonic: info.mnemonic,
     operands: [operand],
-    condition: cond,
-    size: 2
+    size,
   };
 }
 
-function decodeJmpRelCond(opcode: number, info: any, word: number, pc: number): DecodedInstruction {
+function decodeJmpAbsCond(
+  opcode: number,
+  info: InstructionDefinition,
+  word: number,
+  memory: Memory,
+  pc: number,
+): DecodedInstruction {
+  let size = 2;
+  let extOffset = 2;
+  // Extract fields according to the JMP.cond format
+  const condition = ((word >> 6) & 0xf) as ConditionCode; // 4-bit condition code
 
-  // Extract fields according to BR.cond format
-  const condition = (word >> 6) & 0xF;   // 4-bit condition code
-  const condName = ConditionNames[condition] ?? "UNKNOWN";
+  const M = (word >> 4) & 0b11;
+  const regMode = word & 0xf;
 
-  let disp = word & 0x3F;  
+  const { operand, extBytes } = decodeAddressing(
+    M,
+    regMode,
+    memory,
+    pc,
+    extOffset,
+  );
 
-  // Sign-extend displacement if needed
-  if (disp & 0x20) {               
-    disp = disp | 0xFFC0;            
-  }
-
-  const operand: DecodedOperand = {
-    type: OperandType.Relative,
-    displacement: disp
-  };
+  size += extBytes;
 
   return {
     opcode,
     mnemonic: info.mnemonic,
     condition,
     operands: [operand],
-    size: 2
+    size,
   };
 }
 
-// Addressing‑mode decoding 
-function decodeAddressing(M: number, regModo: number, memory: Memory, pc: number): DecodedOperand {
+function decodeJmpRelUncond(
+  opcode: number,
+  info: InstructionDefinition,
+  word: number,
+): DecodedInstruction {
+  const disp = signExtend6(word & 0x3f);
+
+  return {
+    opcode,
+    mnemonic: info.mnemonic,
+    operands: [{ type: "relative", displacement: disp }],
+    size: 2,
+  };
+}
+
+function decodeJmpRelCond(
+  opcode: number,
+  info: InstructionDefinition,
+  word: number,
+): DecodedInstruction {
+  // Extract fields according to BR.cond format
+  const condition = ((word >> 6) & 0xf) as ConditionCode; // 4-bit condition code
+
+  let disp = signExtend6(word & 0x3f);
+
+  return {
+    opcode,
+    mnemonic: info.mnemonic,
+    condition,
+    operands: [{ type: "relative", displacement: disp }],
+    size: 2,
+  };
+}
+
+// Addressing‑mode decoding
+function decodeAddressing(
+  M: number,
+  regMode: number,
+  memory: Memory,
+  pc: number,
+  extOffset: number,
+): { operand: DecodedOperand; extBytes: number } {
   switch (M) {
     case 0b00:
       // Register
       return {
-        type: OperandType.Register,
-        reg: regModo
+        operand: { type: "register", reg: regMode },
+        extBytes: 0,
       };
 
     case 0b01:
       // Register indirect
       return {
-        type: OperandType.RegisterIndirect,
-        reg: regModo
+        operand: { type: "register_indirect", reg: regMode },
+        extBytes: 0,
       };
 
     case 0b10:
       // Immediate (extension word)
+      const value = memory.readWord(pc + extOffset);
+
       return {
-        type: OperandType.Immediate,
-        value: memory.readWord(pc + 2),
-        needsExt: true
+        operand: { type: "immediate", value },
+        extBytes: 2,
       };
 
     case 0b11:
       // Memory modes: direct / indexed / based / relative
-      return decodeMemoryMode(regModo, memory, pc);
+      return decodeMemoryMode(regMode, memory, pc, extOffset);
 
     default:
-      throw new Error(`Invalid addressing mode M=${M}`);
+      throw new Error("Invalid addressing mode M=${M}");
   }
 }
 
-function decodeMemoryMode(regModo: number, memory: Memory, pc: number): DecodedOperand {
-  const ext = memory.readWord(pc + 2);
+function decodeMemoryMode(
+  regMode: number,
+  memory: Memory,
+  pc: number,
+  extOffset: number,
+): { operand: DecodedOperand; extBytes: number } {
+  const ext = memory.readWord(pc + extOffset);
 
-  if (regModo === 0) {
+  if (regMode === 0) {
     // Direct: address in extension word
     return {
-      type: OperandType.Direct,
-      address: ext,
-      needsExt: true
+      operand: { type: "direct", address: ext },
+      extBytes: 2,
     };
   }
 
-  if (regModo === PC_REG) {
+  if (regMode === 8) {
     // Relative: PC‑relative displacement
     return {
-      type: OperandType.Relative,
-      displacement: ext,
-      needsExt: true
+      operand: { type: "relative", displacement: ext },
+      extBytes: 2,
     };
   }
 
-  if (regModo === SP_REG) {
+  if (regMode === 9) {
     // Based: [SP + disp]
     return {
-      type: OperandType.Based,
-      baseReg: SP_REG,
-      displacement: ext,
-      needsExt: true
+      operand: { type: "based", baseReg: regMode, displacement: ext },
+      extBytes: 2,
     };
   }
 
   // Indexed: [Rn + disp]
   return {
-    type: OperandType.Indexed,
-    reg: regModo,
-    displacement: ext,
-    needsExt: true
+    operand: { type: "indexed", reg: regMode, displacement: ext },
+    extBytes: 2,
   };
 }
