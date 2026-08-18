@@ -23,7 +23,7 @@ export interface InstructionDefinition {
 export const InstructionSet: Record<number, InstructionDefinition> = {
   // ADD
   // op1 <- op1 + op2
-  // Updates: Z, N, C, O
+  // Updates: ZCNO
   0x21: {
     mnemonic: "ADD",
     format: "twoOp",
@@ -47,6 +47,33 @@ export const InstructionSet: Record<number, InstructionDefinition> = {
     flagEffects: { Z: true, N: true, C: true, O: true },
 
     description: "Adds op2 to op1 (op1 ← op1 + op2)",
+  },
+
+  // ADDC
+  // op1 <- op1 + op2 + C
+  // Updates: ZCNO
+
+  // AND
+  // op1 <- op1 AND op2
+  // Updates: ZN
+
+  // BR
+  // PC <- PC + offset
+  // Does not update any flag
+
+  // BR.cond
+  //
+
+  // NOP
+  // no operation
+  // Does not update any flag
+  0x00: {
+    mnemonic: "NOP",
+    format: "zeroOp",
+    operandCount: 0,
+    operandEncodings: [],
+    flagEffects: { Z: false, N: false, C: false, O: false },
+    description: "No operation",
   },
 };
 

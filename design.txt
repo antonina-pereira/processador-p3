@@ -1,0 +1,3 @@
+Fonts: Tahoma for titles and Courier New for the body
+Color: Onyx (#0C0B0B), Green (#00FF26), Yellow (#F3D80F), Blue (#24CCD2), Red (#F60808), Purple (#C302C9)
+Background: #f8f5ff

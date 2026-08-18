@@ -4,7 +4,7 @@
 
 export const TokenType = {
   // Words
-  Mnemonic: "Mnemonic",
+  Mnemonic: "Mnemonic", // Instruction
   Register: "Register",
   Identifier: "Identifier",
   Label: "Label",
