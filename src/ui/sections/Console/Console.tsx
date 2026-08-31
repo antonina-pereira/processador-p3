@@ -1,8 +1,17 @@
-export function Console() {
+// ui/sections/Console/Console.tsx
+
+function Console({ diagnostics }: { diagnostics: Diagnostic[] }) {
   return (
-    <div style={{ border: '1px solid #ccc', padding: 12, height: 120 }}>
-      <h3>Console</h3>
-      <pre>// output will appear here</pre>
+    <div>
+      {diagnostics.length === 0 ? (
+        <div>No errors.</div>
+      ) : (
+        diagnostics.map((d, index) => (
+          <div key={index}>
+            Line {d.line}: {d.message}
+          </div>
+        ))
+      )}
     </div>
-  )
+  );
 }

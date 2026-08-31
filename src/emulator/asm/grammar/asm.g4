@@ -57,7 +57,7 @@ zeroOpValueMnemonic
   ;
 
 oneOpInst
-  : oneOpMnemonic (address | ID)
+  : oneOpMnemonic operand 
   ;
 
 oneOpMnemonic
@@ -70,7 +70,7 @@ oneOpMnemonic
   ;
 
 oneOpValueInst
-  : oneOpValueMnemonic (address | ID) COMMA const
+  : oneOpValueMnemonic operand COMMA const
   ;
 
 oneOpValueMnemonic
@@ -85,7 +85,7 @@ oneOpValueMnemonic
   ;
 
 twoOpInst
-  : twoOpMnemonic (address | ID) COMMA (address | ID)
+  : twoOpMnemonic operand COMMA operand
   ;
 
 twoOpMnemonic
@@ -107,7 +107,7 @@ twoOpMnemonic
   ;
 
 jmpInst
-  : jmpMnemonic (DOT COND)? (address | ID) 
+  : jmpMnemonic (DOT COND)? operand 
   ;
 
 jmpMnemonic
@@ -149,6 +149,12 @@ strDirectiveElement
 tabDirective
   : ID TAB const
   ;
+
+/* Operand */
+operand
+    : address
+    | ID
+    ;
 
 /* Addressing */
 address
