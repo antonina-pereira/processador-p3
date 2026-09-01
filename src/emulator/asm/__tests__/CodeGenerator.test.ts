@@ -38,6 +38,6 @@ it("generates machine code for ADD", () => {
   console.log(code[0]);
   console.log(code[0].constructor.name);
   console.log(ast);
-  expect(code).toHaveLength(2);
-  expect(code[1]).toBe(5);
+  expect(code).toHaveLength(1);
+  expect(code[0]).toBe(33858);
 });

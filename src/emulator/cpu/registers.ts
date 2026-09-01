@@ -105,6 +105,18 @@ export class Registers {
 
   // Gets the values for all registers
   dump(): Record<RegisterName, number> {
-    return { ...this.values };
+    return {
+      R0: this.read("R0"),
+      R1: this.read("R1"),
+      R2: this.read("R2"),
+      R3: this.read("R3"),
+      R4: this.read("R4"),
+      R5: this.read("R5"),
+      R6: this.read("R6"),
+      R7: this.read("R7"),
+      SP: this.read("SP"),
+      PC: this.read("PC"),
+      RE: this.read("RE"),
+    };
   }
 }

@@ -63,6 +63,30 @@ export const InstructionSet: Record<number, InstructionDefinition> = {
 
   // BR.cond
   //
+  // MOV
+  // Copies the content of op2 to op1
+  // Does not update any flag
+  0x2b: {
+    mnemonic: "MOV",
+    format: "twoOp",
+    operandCount: 2,
+    operandEncodings: [
+      // The destination must be register
+      {
+        type: OperandType.Register,
+        mode: AddressingMode.Register,
+        canBeDestination: true,
+      },
+      // The source can be any addressing mode
+      {
+        type: OperandType.Any,
+        mode: AddressingMode.Register,
+        canBeDestination: false,
+      },
+    ],
+    flagEffects: { Z: false, N: false, C: false, O: false },
+    description: "Copies the content of op2 to op1 (op1 ← op1 + op2)",
+  },
 
   // NOP
   // no operation

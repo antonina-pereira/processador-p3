@@ -2,20 +2,20 @@ import { describe, it, expect, vi } from "vitest";
 import Memory from "../memory";
 import { decodeInstruction } from "../decoder";
 import { AddressingMode, OperandType } from "../instruction-format";
-import { InstructionSet } from "../instruction-set"
-import { RegisterIndex } from "../registers"
+import { InstructionSet } from "../instruction-set";
+import { RegisterIndex } from "../registers";
 
 // Mock a tiny instruction set
 vi.mock("./instruction-set", () => ({
   InstructionSet: {
     0x21: { mnemonic: "ADD", operandCount: 2, OperandType: "register" },
-  }
+  },
 }));
 
 describe("decoder", () => {
   it("decodes opcode correctly", () => {
     const memory = new Memory();
-    const word = (0x21 << 10); // opcode 0x21 = ADD
+    const word = 0x21 << 10; // opcode 0x21 = ADD
 
     const decoded = decodeInstruction(word, memory, 0x0000);
 
@@ -44,12 +44,12 @@ describe("decoder", () => {
 
     expect(decoded.operands[0]).toEqual({
       type: OperandType.Register,
-      reg: 3
+      reg: 3,
     });
 
     expect(decoded.operands[1]).toEqual({
       type: OperandType.Register,
-      reg: 5
+      reg: 5,
     });
 
     expect(decoded.size).toBe(2);
@@ -79,13 +79,12 @@ describe("decoder", () => {
 
     expect(decoded.operands[0]).toEqual({
       type: OperandType.Register,
-      reg: 3
+      reg: 3,
     });
 
     expect(decoded.operands[1]).toEqual({
       type: OperandType.Immediate,
       value: 0x1234,
-      needsExt: true
     });
 
     expect(decoded.size).toBe(4);
@@ -115,13 +114,12 @@ describe("decoder", () => {
 
     expect(decoded.operands[0]).toEqual({
       type: OperandType.Register,
-      reg: 3
+      reg: 3,
     });
 
     expect(decoded.operands[1]).toEqual({
       type: OperandType.Direct,
       address: 0x5555,
-      needsExt: true
     });
 
     expect(decoded.size).toBe(4);
@@ -151,14 +149,13 @@ describe("decoder", () => {
 
     expect(decoded.operands[0]).toEqual({
       type: OperandType.Register,
-      reg: 3
+      reg: 3,
     });
 
     expect(decoded.operands[1]).toEqual({
       type: OperandType.Indexed,
       reg: 2,
       displacement: 0x0100,
-      needsExt: true
     });
 
     expect(decoded.size).toBe(4);
@@ -179,7 +176,7 @@ describe("decoder", () => {
     const M = 0b11 << 4;
 
     // Import the PC register index from your register map
-    const PC_REG = RegisterIndex.PC;
+    const PC_REG = 8;
     const regModo = PC_REG;
 
     const word = opcode | S | regReg | M | regModo;
@@ -191,13 +188,12 @@ describe("decoder", () => {
 
     expect(decoded.operands[0]).toEqual({
       type: OperandType.Register,
-      reg: 3
+      reg: 3,
     });
 
     expect(decoded.operands[1]).toEqual({
       type: OperandType.Relative,
       displacement: 0x0004,
-      needsExt: true
     });
 
     expect(decoded.size).toBe(4);
@@ -208,7 +204,7 @@ describe("decoder", () => {
 
     // MODE = 3 (binary 11) is valid (register indirect)
     // So to force an invalid mode, we must break decodeAddressingMode
-    const word = (0x21 << 9) | (0xF << 6); // invalid modeBits = 0b1111
+    const word = (0x21 << 9) | (0xf << 6); // invalid modeBits = 0b1111
 
     expect(() => decodeInstruction(word, memory, 0x0000)).toThrow();
   });
@@ -216,7 +212,7 @@ describe("decoder", () => {
   it("throws on unknown opcode", () => {
     const memory = new Memory();
 
-    const word = (0x99 << 10); 
+    const word = 0x99 << 10;
 
     expect(() => decodeInstruction(word, memory, 0x0000)).toThrow();
   });

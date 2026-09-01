@@ -13,15 +13,15 @@ describe("Microcode", () => {
   });
 
   it("throws for unknown opcode", () => {
-    expect(() => getMicrocode(0xFFFF)).toThrow();
+    expect(() => getMicrocode(0xffff)).toThrow();
   });
 
   it("ADD opcode contains ALU_ADD and WRITEBACK_RESULT", () => {
     const seq = getMicrocode(0x21);
 
-    const allOps = seq.flatMap(step => step.ops);
+    const allOps = seq.flatMap((step) => step.ops);
 
-    expect(allOps).toContain(MicroOp.ALU_ADD);
+    expect(allOps).toContain(MicroOp.EXEC_ALU);
     expect(allOps).toContain(MicroOp.WRITEBACK_RESULT);
   });
 });

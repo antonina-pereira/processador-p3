@@ -33,8 +33,14 @@ export const Microcode: Record<number, MicroInstruction[]> = {
     { ops: [MicroOp.UPDATE_FLAGS] },
     { ops: [MicroOp.WRITEBACK_RESULT] },
   ],
-};
 
+  // MOV
+  0x2b: [
+    { ops: [MicroOp.LOAD_OP2] },
+    { ops: [MicroOp.EXEC_ALU], aluOp: AluOp.MOV },
+    { ops: [MicroOp.WRITEBACK_RESULT] },
+  ],
+};
 // Returns the micro‑instruction sequence for a given opcode
 export function getMicrocode(opcode: number): MicroInstruction[] {
   const entry = Microcode[opcode];

@@ -1,45 +1,46 @@
-import { Registers } from "../registers"
+import { describe, test, expect, beforeEach } from "vitest";
+import { Registers } from "../registers";
 
 describe("Registers", () => {
-  let regs: Registers
+  let regs: Registers;
 
   beforeEach(() => {
-    regs = new Registers()
-  })
+    regs = new Registers();
+  });
 
   test("initializes all registers to zero", () => {
-    const snapshot = regs.dump()
+    const snapshot = regs.dump();
     for (const key in snapshot) {
-      expect(snapshot[key as keyof typeof snapshot]).toBe(0)
+      expect(snapshot[key as keyof typeof snapshot]).toBe(0);
     }
-  })
+  });
 
   test("writes and reads register values", () => {
-    regs.write("R1", 123)
-    expect(regs.read("R1")).toBe(123)
-  })
+    regs.write("R1", 123);
+    expect(regs.read("R1")).toBe(123);
+  });
 
   test("masks values to 16 bits", () => {
-    regs.write("R7", 0x1FFFF) // 17 bits
-    expect(regs.read("R7")).toBe(0xFFFF)
-  })
+    regs.write("R7", 0x1ffff); // 17 bits
+    expect(regs.read("R7")).toBe(0xffff);
+  });
 
   test("reset clears all registers", () => {
-    regs.write("R2", 42)
-    regs.write("PC", 99)
-    regs.reset()
+    regs.write("R2", 42);
+    regs.write("PC", 99);
+    regs.reset();
 
-    const snapshot = regs.dump()
+    const snapshot = regs.dump();
     for (const key in snapshot) {
-      expect(snapshot[key as keyof typeof snapshot]).toBe(0)
+      expect(snapshot[key as keyof typeof snapshot]).toBe(0);
     }
-  })
+  });
 
   test("dump returns a copy, not a reference", () => {
-    const snapshot = regs.dump()
-    snapshot.SP = 999
+    const snapshot = regs.dump();
+    snapshot.SP = 999;
 
     // internal state should not change
-    expect(regs.read("SP")).toBe(0)
-  })
-})
+    expect(regs.read("SP")).toBe(0);
+  });
+});

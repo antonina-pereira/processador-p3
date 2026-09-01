@@ -403,7 +403,13 @@ export class AstBuilder
   }
 
   visitImmediate(ctx: ImmediateContext): AST.ImmediateNode {
-    return this.visit(ctx.const_()) as AST.ImmediateNode;
+    const value = this.visit(ctx.const_()) as AST.ConstantNode;
+
+    return {
+      line: ctx.start.line,
+      column: ctx.start.column,
+      value,
+    };
   }
 
   visitDirect(ctx: DirectContext): AST.DirectNode {
@@ -419,22 +425,36 @@ export class AstBuilder
   visitRegisterIndirect(
     ctx: RegisterIndirectContext,
   ): AST.RegisterIndirectNode {
-    return this.visit(ctx.REGISTER()) as AST.RegisterIndirectNode;
+    return {
+      line: ctx.start.line,
+      column: ctx.start.column,
+      register: this.visit(ctx.REGISTER()) as AST.RegisterNode,
+    };
   }
 
   visitIndexed(ctx: IndexedContext): AST.IndexedNode {
     return {
+      line: ctx.start.line,
+      column: ctx.start.column,
       register: this.visit(ctx.REGISTER()) as AST.RegisterNode,
       offset: this.visit(ctx.const_()) as AST.ConstantNode,
     } as AST.IndexedNode;
   }
 
   visitRelative(ctx: RelativeContext): AST.RelativeNode {
-    return this.visit(ctx.const_()) as AST.RelativeNode;
+    return {
+      line: ctx.start.line,
+      column: ctx.start.column,
+      offset: this.visit(ctx.const_()) as AST.ConstantNode,
+    };
   }
 
   visitBased(ctx: BasedContext): AST.BasedNode {
-    return this.visit(ctx.const_()) as AST.BasedNode;
+    return {
+      line: ctx.start.line,
+      column: ctx.start.column,
+      offset: this.visit(ctx.const_()) as AST.ConstantNode,
+    };
   }
 
   visitConst(ctx: ConstContext): AST.ConstantNode {

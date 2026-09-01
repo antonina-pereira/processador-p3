@@ -51,6 +51,9 @@ export class ControlUnit {
     // DEBUG
     console.log("PC:", pc.toString(16));
     console.log("WORD:", word.toString(16));
+    console.log("DECODED", decoded);
+    console.log("SIZE", decoded.size);
+    console.log("MICROCODE", microSeq);
   }
 
   // Execute a single micro‑operation.

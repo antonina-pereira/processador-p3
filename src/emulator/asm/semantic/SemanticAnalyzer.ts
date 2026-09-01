@@ -26,8 +26,6 @@ export class SemanticAnalyzer {
     this.validateProgram(program);
     // Pass 4: assign addresses
     this.assignAddress(program);
-    // Pass 5: resolve branches
-    //this.resolveBranch(program);
 
     return {
       symbols: this.symbols,
@@ -173,42 +171,196 @@ export class SemanticAnalyzer {
     for (const statement of program.statements) {
       if ("mnemonic" in statement) {
         this.validateInstruction(statement as AST.InstructionNode);
+      } else {
+        this.validateDirective(statement as AST.DirectiveNode);
       }
-      this.validateDirective(statement as AST.DirectiveNode);
     }
   }
 
   private validateInstruction(instruction: AST.InstructionNode): void {
+    const op0 = instruction.operands[0] as AST.ConstantNode;
+
     switch (instruction.mnemonic) {
+      //case "BR" | "CALL" | "JMP":
+      //if () {
+      //  this.resolveBranch(instruction, );
+      //}
+      // break;
+
       case "INT":
-        const operand = instruction.operands[0] as AST.ConstantNode;
-        if (operand.value < 0 || operand.value > 255) {
+        if (op0.value < 0 || op0.value > 255) {
           this.diagnostics.push({
             line: instruction.line,
             column: instruction.column,
-            message: "Interrupt vector must be between 0 and 255.",
+            message: "INT - Interrupt vector must be between 0 and 255.",
           });
+        }
+        if (!("value" in op0)) {
+          this.diagnostics.push({
+            line: instruction.line,
+            column: instruction.column,
+            message: "INT requires an immediate value.",
+          });
+          return;
         }
         break;
 
       case "RETN":
         // RETN value must be between 0 and 1023.
+        if (op0.value < 0 || op0.value > 1023) {
+          this.diagnostics.push({
+            line: instruction.line,
+            column: instruction.column,
+            message: "RETN value must be between 0 and 1023.",
+          });
+        }
+
+        if (!("value" in op0)) {
+          this.diagnostics.push({
+            line: instruction.line,
+            column: instruction.column,
+            message: "RETN requires an immediate value.",
+          });
+          return;
+        }
         break;
 
       case "MOV":
         // Destination must not be immediate.
+        if ("value" in op0) {
+          this.diagnostics.push({
+            line: op0.line,
+            column: op0.column,
+            message: "MOV - Destination operand cannot be an immediate value.",
+          });
+        }
         break;
 
       case "MUL":
         // Destination must not be immediate.
+        if ("value" in op0) {
+          this.diagnostics.push({
+            line: op0.line,
+            column: op0.column,
+            message:
+              `${instruction.mnemonic} destination operand ` +
+              `cannot be an immediate value.`,
+          });
+        }
         break;
     }
   }
 
   private validateDirective(directive: AST.DirectiveNode): void {
-    return;
-  }
+    switch (directive.type) {
+      case "ORIG": {
+        if ("value" in directive.address) {
+          if (directive.address.value < 0 || directive.address.value > 65535) {
+            this.diagnostics.push({
+              line: directive.address.line,
+              column: directive.address.column,
+              message: "ORIG address must be between 0 and 65535.",
+            });
+          }
+        }
 
+        break;
+      }
+
+      case "EQU": {
+        if (directive.value.value < -32768 || directive.value.value > 65535) {
+          this.diagnostics.push({
+            line: directive.value.line,
+            column: directive.value.column,
+            message: "EQU value must be between -32768 and 65535.",
+          });
+        }
+
+        break;
+      }
+
+      case "WORD": {
+        if (!directive.label?.name) {
+          this.diagnostics.push({
+            line: directive.line,
+            column: directive.column,
+            message: "WORD requires a label.",
+          });
+        }
+
+        if (directive.value.value < -32768 || directive.value.value > 65535) {
+          this.diagnostics.push({
+            line: directive.value.line,
+            column: directive.value.column,
+            message: "WORD initial value must be between -32768 and 65535.",
+          });
+        }
+
+        break;
+      }
+
+      case "TAB": {
+        if (!directive.label?.name) {
+          this.diagnostics.push({
+            line: directive.line,
+            column: directive.column,
+            message: "TAB requires a label.",
+          });
+        }
+
+        if (directive.value.value <= 0) {
+          this.diagnostics.push({
+            line: directive.value.line,
+            column: directive.value.column,
+            message: "TAB size must be greater than zero.",
+          });
+        }
+
+        if (directive.value.value > 65535) {
+          this.diagnostics.push({
+            line: directive.value.line,
+            column: directive.value.column,
+            message: "TAB size cannot exceed 65535.",
+          });
+        }
+
+        break;
+      }
+
+      case "STR": {
+        if (!directive.label?.name) {
+          this.diagnostics.push({
+            line: directive.line,
+            column: directive.column,
+            message: "STR requires a label.",
+          });
+        }
+
+        if (directive.values.length === 0) {
+          this.diagnostics.push({
+            line: directive.line,
+            column: directive.column,
+            message: "STR requires at least one value.",
+          });
+        }
+
+        for (const value of directive.values) {
+          if (
+            "value" in value &&
+            (Number(value.value) < -32768 || Number(value.value) > 65535)
+          ) {
+            this.diagnostics.push({
+              line: value.line,
+              column: value.column,
+              message: "STR constant must be between -32768 and 65535.",
+            });
+          }
+        }
+
+        break;
+      }
+    }
+  }
   private assignAddress(program: AST.ProgramNode): void {
     for (const statement of program.statements) {
       this.assignStatementAddress(statement);
@@ -279,5 +431,50 @@ export class SemanticAnalyzer {
 
   private assignSymbolValue(name: string, value: number): void {
     this.symbols.updateValue(name, value);
+  }
+
+  private resolveBranch(instruction: AST.InstructionNode): void {
+    const operand = instruction.operands[0] as AST.OperandNode;
+
+    if (!("name" in operand)) {
+      this.diagnostics.push({
+        line: instruction.line,
+        column: instruction.column,
+        message: "Branch operand must be a label",
+      });
+
+      return;
+    }
+
+    const targetAddress = this.symbols.get(operand.name);
+
+    if (targetAddress === undefined) {
+      this.diagnostics.push({
+        line: instruction.line,
+        column: instruction.column,
+        message: `Undefined label '${operand.name}'`,
+      });
+
+      return;
+    }
+
+    // Assuming PC points to the next instruction.
+    const nextInstructionAddress = instruction.address + instruction.size;
+
+    const offset = targetAddress - nextInstructionAddress;
+
+    // Example: signed 8-bit branch
+    if (offset < -128 || offset > 127) {
+      this.diagnostics.push({
+        line: instruction.line,
+        column: instruction.column,
+        message:
+          `Branch target '${operand.name}' is out of range ` + `(${offset})`,
+      });
+
+      return;
+    }
+
+    instruction.resolvedOffset = offset;
   }
 }

@@ -1,85 +1,90 @@
 import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import viteLogo from "./assets/vite.svg";
 import heroImg from "./assets/hero.png";
 import "./App.css";
+import { AppLayout } from "./ui/AppLayout";
+import { Header } from "./ui/Header";
 
-import { AppLayout } from "./ui/layout/AppLayout";
-import { Header } from "./ui/sections/Header/Header";
-import { CodeEditor } from "./ui/sections/CodeEditor/CodeEditor";
-import { CodeControls } from "./ui/sections/CodeEditor/CodeControls";
-import { Console } from "./ui/sections/Console/Console";
-import { AssemblerControls } from "./ui/sections/Console/AssemblerControls";
-import { MemoryView } from "./ui/sections/Memory/MemoryView";
-import { ExecutionControls } from "./ui/sections/Memory/ExecutionControls";
-import { ExecutionStats } from "./ui/sections/Memory/ExecutionStats";
-
-import { assemble } from "./emulator/asm/assembler";
-import type { Diagnostic } from "./emulator/asm/semantic/Diagnostic";
+import { AssemblyEditor } from "./ui/AssemblyEditor";
+import { emulatorSession } from "./emulator-session";
+import type { ConsoleMessage } from "./ui/console-message";
+import { Console } from "./ui/Console";
+import { ExecutionControls } from "./ui/ExecutionControls";
+import { CpuStatePanel } from "./ui/CpuStatePanel";
+import { ProgramView } from "./ui/ProgramView";
+import { MemoryView } from "./ui/MemoryView";
 
 export default function App() {
-  const [source, setSource] = useState(`COUNT WORD 0
-                                        Loop:
-                                          ADD R1, R2`);
-  const [code, setCode] = useState<number[]>([]);
-  const [diagnostics, setDiagnostics] = useState<Diagnostic[]>([]);
+  const [source, setSource] = useState(`MOV R1, 2`);
+  const [state, setState] = useState(emulatorSession.getState());
 
-  const completeAssemble = () => {
+  const [consoleMessages, setConsoleMessages] = useState<ConsoleMessage[]>([]);
+
+  const [assembled, setAssembled] = useState(false);
+
+  const handleAssemble = () => {
     try {
-      const result = assemble(source);
+      const result = emulatorSession.assemble(source);
 
-      setCode(result.code);
-      setDiagnostics(result.diagnostics);
+      const messages: ConsoleMessage[] = result.diagnostics.map((d) => ({
+        type: "error",
+        text: d.message,
+        line: d.line,
+      }));
+      if (result.diagnostics.length === 0) {
+        messages.push({
+          type: "info",
+          text: "Assembly successful.",
+        });
+        setConsoleMessages(messages);
+        setAssembled(true);
+      }
+
+      emulatorSession.load(result.code);
+      setState(emulatorSession.getState());
     } catch (error) {
       console.error(error);
-
-      setDiagnostics([
-        {
-          line: 0,
-          column: 0,
-          message:
-            error instanceof Error ? error.message : "Unknown assembly error.",
-        },
-      ]);
-
-      setCode([]);
     }
+  };
+
+  const handleStep = () => {
+    emulatorSession.step();
+    const s = emulatorSession.getState();
+    console.log("STATE", s);
+    console.log("REGISTERS", s.registers);
+    setState(s);
+  };
+
+  const handleRun = () => {
+    emulatorSession.run();
+    setState(emulatorSession.getState());
+  };
+
+  const handleReset = () => {
+    emulatorSession.reset();
+    setConsoleMessages([
+      {
+        type: "info",
+        text: "System reset.",
+      },
+    ]);
+    setState(emulatorSession.getState());
   };
 
   return (
     <AppLayout>
       <Header />
-
-      <div style={{ display: "flex", gap: 16 }}>
-        <div style={{ flex: 1 }}>
-          <CodeEditor value={source} onChange={setSource} />
-        </div>
-
-        <div style={{ width: 100 }}>
-          <CodeControls />
-        </div>
-      </div>
-
-      <div style={{ display: "flex", gap: 16 }}>
-        <div style={{ flex: 1 }}>
-          <Console diagnostics={diagnostics} />
-        </div>
-
-        <div style={{ width: 100 }}>
-          <AssemblerControls onAssemble={completeAssemble} />
-        </div>
-      </div>
-
-      <div style={{ display: "flex", gap: 16 }}>
-        <div style={{ flex: 1 }}>
-          <MemoryView code={code} />
-        </div>
-
-        <div style={{ width: 100 }}>
-          <ExecutionControls />
-          <ExecutionStats />
-        </div>
-      </div>
+      <AssemblyEditor source={source} onChange={setSource} />
+      <ExecutionControls
+        assembled={assembled}
+        onAssemble={handleAssemble}
+        onStep={handleStep}
+        onRun={handleRun}
+        onReset={handleReset}
+      />
+      <Console messages={consoleMessages} />
+      <CpuStatePanel registers={state.registers} flags={state.flags} />
+      <ProgramView state={state} />
+      <MemoryView state={state} />
     </AppLayout>
   );
 }

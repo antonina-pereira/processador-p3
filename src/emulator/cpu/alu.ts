@@ -11,6 +11,7 @@ export const AluOp = {
   XOR: "XOR",
   CMP: "CMP",
   COM: "COM",
+  MOV: "MOV",
 } as const;
 
 export type AluOp = (typeof AluOp)[keyof typeof AluOp];
@@ -161,6 +162,19 @@ export function executeAlu(op: AluOp, a: number, b: number): AluResult {
       return {
         result,
         flags: computeFlags(result),
+      };
+    }
+
+    // MOV
+    case "MOV": {
+      return {
+        result: b,
+        flags: {
+          C: false,
+          O: false,
+          Z: false,
+          N: false,
+        },
       };
     }
 

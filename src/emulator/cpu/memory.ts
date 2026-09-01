@@ -1,4 +1,8 @@
 // memory.ts
+
+import type { MemoryWord } from "./cpu-state";
+import { decodeInstruction } from "./decoder";
+
 // models and manages memory
 export const WORD_SIZE = 2; // bytes per word
 export const MEMORY_SIZE = 0x10000; // 64 KB address space
@@ -75,6 +79,20 @@ export class Memory {
   // Reset memory to zero
   clear() {
     this.data.fill(0);
+  }
+
+  // Shows memory by words
+  // Used by cpu-state for UI
+  dumpWords(start: number, end: number): MemoryWord[] {
+    const words: MemoryWord[] = [];
+
+    for (let addr = start; addr <= end; addr += 2) {
+      words.push({
+        address: addr,
+        value: this.readWord(addr),
+      });
+    }
+    return words;
   }
 }
 
