@@ -72,11 +72,6 @@ export function evaluateCondition(
     case ConditionCode.NP:
       return flags.Z || flags.N;
 
-    case ConditionCode.I:
-      return interruptPending;
-    case ConditionCode.NI:
-      return !interruptPending;
-
     default:
       throw new Error("Unknown condition.");
   }

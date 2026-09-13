@@ -14,11 +14,11 @@ Loop:
   RET
 `);
 
-  const ast = buildAst(tree as ProgramContext);
+  const astResult = buildAst(tree as ProgramContext);
 
   const analyzer = new SemanticAnalyzer();
 
-  const result = analyzer.analyze(ast);
+  const result = analyzer.analyze(astResult.ast);
 
   expect(result.diagnostics).toHaveLength(1);
 
@@ -31,11 +31,11 @@ COUNT WORD 0
 COUNT WORD 1
 `);
 
-  const ast = buildAst(tree as ProgramContext);
+  const astResult = buildAst(tree as ProgramContext);
 
   const analyzer = new SemanticAnalyzer();
 
-  const result = analyzer.analyze(ast);
+  const result = analyzer.analyze(astResult.ast);
 
   expect(result.diagnostics).toHaveLength(1);
 
@@ -50,11 +50,11 @@ Loop:
 Loop WORD 0
 `);
 
-  const ast = buildAst(tree as ProgramContext);
+  const astResult = buildAst(tree as ProgramContext);
 
   const analyzer = new SemanticAnalyzer();
 
-  const result = analyzer.analyze(ast);
+  const result = analyzer.analyze(astResult.ast);
 
   expect(result.diagnostics).toHaveLength(1);
 
@@ -70,11 +70,11 @@ Loop:
   NOP
 `);
 
-  const ast = buildAst(tree as ProgramContext);
+  const astResult = buildAst(tree as ProgramContext);
 
   const analyzer = new SemanticAnalyzer();
 
-  const result = analyzer.analyze(ast);
+  const result = analyzer.analyze(astResult.ast);
 
   expect(result.diagnostics).toHaveLength(0);
 });
@@ -84,13 +84,13 @@ it("invalid label", () => {
 BR MissingLabel
 `);
 
-  const ast = buildAst(tree as ProgramContext);
+  const astResult = buildAst(tree as ProgramContext);
 
   const analyzer = new SemanticAnalyzer();
 
-  const result = analyzer.analyze(ast);
+  const result = analyzer.analyze(astResult.ast);
 
-  expect(result.diagnostics).toHaveLength(1);
+  expect(result.diagnostics).toHaveLength(2);
 });
 
 it("valid label", () => {
@@ -100,11 +100,11 @@ Loop:
   BR Loop
 `);
 
-  const ast = buildAst(tree as ProgramContext);
+  const astResult = buildAst(tree as ProgramContext);
 
   const analyzer = new SemanticAnalyzer();
 
-  const result = analyzer.analyze(ast);
+  const result = analyzer.analyze(astResult.ast);
 
   expect(result.diagnostics).toHaveLength(0);
 });
@@ -114,11 +114,11 @@ it("invalid data reference", () => {
 MOV R1, COUNT
 `);
 
-  const ast = buildAst(tree as ProgramContext);
+  const astResult = buildAst(tree as ProgramContext);
 
   const analyzer = new SemanticAnalyzer();
 
-  const result = analyzer.analyze(ast);
+  const result = analyzer.analyze(astResult.ast);
 
   expect(result.diagnostics).toHaveLength(1);
 });
@@ -129,11 +129,11 @@ COUNT WORD 0
 MOV R1, COUNT
 `);
 
-  const ast = buildAst(tree as ProgramContext);
+  const astResult = buildAst(tree as ProgramContext);
 
   const analyzer = new SemanticAnalyzer();
 
-  const result = analyzer.analyze(ast);
+  const result = analyzer.analyze(astResult.ast);
 
   expect(result.diagnostics).toHaveLength(0);
 });
@@ -144,11 +144,11 @@ ORIG 8000h
 COUNT WORD 0
 `);
 
-  const ast = buildAst(tree as ProgramContext);
+  const astResult = buildAst(tree as ProgramContext);
 
   const analyzer = new SemanticAnalyzer();
 
-  const result = analyzer.analyze(ast);
+  const result = analyzer.analyze(astResult.ast);
 
   console.log(result.symbols.entries());
 });
@@ -162,11 +162,11 @@ Loop:
   NOP
 `);
 
-  const ast = buildAst(tree as ProgramContext);
+  const astResult = buildAst(tree as ProgramContext);
 
   const analyzer = new SemanticAnalyzer();
 
-  const result = analyzer.analyze(ast);
+  const result = analyzer.analyze(astResult.ast);
 
   console.log(result.symbols.entries());
 });

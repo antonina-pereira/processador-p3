@@ -1,4 +1,5 @@
 // decoder.ts
+// Decodes the value in memory into instructions for breakdown into micro-operations
 
 import { InstructionSet, type InstructionDefinition } from "./instruction-set";
 import type { InstructionFormat } from "./instruction-format";

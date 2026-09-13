@@ -7,6 +7,7 @@ import { AluOp } from "./alu";
 export const MicroOp = {
   // Operand fetch
   LOAD_OP1: "LOAD_OP1", // Load operand 1 into internal latch
+  LOAD_OP1_ADDRESS: "LOAD_OP1_ADDRESS", // For branches and jumps
   LOAD_OP2: "LOAD_OP2", // Load operand 2 into internal latch
   EXEC_ALU: "EXEC_ALU", // ALU operations
   WRITEBACK_RESULT: "WRITEBACK_RESULT", // Write ALU result to destination register
@@ -34,10 +35,76 @@ export const Microcode: Record<number, MicroInstruction[]> = {
     { ops: [MicroOp.WRITEBACK_RESULT] },
   ],
 
+  // AND
+  0x28: [
+    { ops: [MicroOp.LOAD_OP1, MicroOp.LOAD_OP2] },
+    { ops: [MicroOp.EXEC_ALU], aluOp: AluOp.AND },
+    { ops: [MicroOp.UPDATE_FLAGS] },
+    { ops: [MicroOp.WRITEBACK_RESULT] },
+  ],
+
+  // BR
+  0x38: [
+    { ops: [MicroOp.LOAD_OP1_ADDRESS] }, // load offset
+    { ops: [MicroOp.EXEC_ALU], aluOp: AluOp.ADD },
+    { ops: [MicroOp.UPDATE_PC_FROM_ALU] },
+  ],
+
+  // CMP
+  0x20: [
+    { ops: [MicroOp.LOAD_OP1] },
+    { ops: [MicroOp.LOAD_OP2] },
+    { ops: [MicroOp.EXEC_ALU], aluOp: AluOp.CMP },
+    { ops: [MicroOp.UPDATE_FLAGS] },
+  ],
+
+  // COM
+  0x13: [
+    { ops: [MicroOp.LOAD_OP1] },
+    { ops: [MicroOp.EXEC_ALU], aluOp: AluOp.COM },
+    { ops: [MicroOp.UPDATE_FLAGS] },
+    { ops: [MicroOp.WRITEBACK_RESULT] },
+  ],
+
+  // INC
+  0x11: [
+    { ops: [MicroOp.LOAD_OP1] },
+    { ops: [MicroOp.EXEC_ALU], aluOp: AluOp.INC },
+    { ops: [MicroOp.WRITEBACK_RESULT] },
+    { ops: [MicroOp.UPDATE_FLAGS] },
+  ],
+
+  // JMP
+
   // MOV
   0x2b: [
     { ops: [MicroOp.LOAD_OP2] },
     { ops: [MicroOp.EXEC_ALU], aluOp: AluOp.MOV },
+    { ops: [MicroOp.WRITEBACK_RESULT] },
+  ],
+
+  // OR
+  0x29: [
+    { ops: [MicroOp.LOAD_OP1, MicroOp.LOAD_OP2] },
+    { ops: [MicroOp.EXEC_ALU], aluOp: AluOp.OR },
+    { ops: [MicroOp.UPDATE_FLAGS] },
+    { ops: [MicroOp.WRITEBACK_RESULT] },
+  ],
+
+  // SUB
+  0x23: [
+    { ops: [MicroOp.LOAD_OP1] },
+    { ops: [MicroOp.LOAD_OP2] },
+    { ops: [MicroOp.EXEC_ALU], aluOp: AluOp.SUB },
+    { ops: [MicroOp.WRITEBACK_RESULT] },
+    { ops: [MicroOp.UPDATE_FLAGS] },
+  ],
+
+  // XOR
+  0x2a: [
+    { ops: [MicroOp.LOAD_OP1, MicroOp.LOAD_OP2] },
+    { ops: [MicroOp.EXEC_ALU], aluOp: AluOp.XOR },
+    { ops: [MicroOp.UPDATE_FLAGS] },
     { ops: [MicroOp.WRITEBACK_RESULT] },
   ],
 };

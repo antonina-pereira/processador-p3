@@ -142,7 +142,7 @@ describe("CPU", () => {
 
     cpu.loadProgram([0x1234, 0x5678]);
 
-    expect(memory.readWord(0)).toBe(0x1234);
-    expect(memory.readWord(2)).toBe(0x5678);
+    expect(memory.readWord(0x8000)).toBe(0x1234);
+    expect(memory.readWord(0x8002)).toBe(0x5678);
   });
 });

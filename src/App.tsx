@@ -1,11 +1,12 @@
 import { useState } from "react";
-import heroImg from "./assets/hero.png";
+
 import "./App.css";
+
+import { emulatorSession } from "./emulator-session";
+
 import { AppLayout } from "./ui/AppLayout";
 import { Header } from "./ui/Header";
-
 import { AssemblyEditor } from "./ui/AssemblyEditor";
-import { emulatorSession } from "./emulator-session";
 import type { ConsoleMessage } from "./ui/console-message";
 import { Console } from "./ui/Console";
 import { ExecutionControls } from "./ui/ExecutionControls";
@@ -14,13 +15,15 @@ import { ProgramView } from "./ui/ProgramView";
 import { MemoryView } from "./ui/MemoryView";
 
 export default function App() {
-  const [source, setSource] = useState(`MOV R1, 2`);
+  const [source, setSource] = useState(`MOV R1, 2\nMOV R2, 3\nADD R1, R2`); // preloaded assembly program
+
   const [state, setState] = useState(emulatorSession.getState());
 
   const [consoleMessages, setConsoleMessages] = useState<ConsoleMessage[]>([]);
 
   const [assembled, setAssembled] = useState(false);
 
+  // For the Assemble button in the UI
   const handleAssemble = () => {
     try {
       const result = emulatorSession.assemble(source);
@@ -30,22 +33,31 @@ export default function App() {
         text: d.message,
         line: d.line,
       }));
-      if (result.diagnostics.length === 0) {
-        messages.push({
-          type: "info",
-          text: "Assembly successful.",
-        });
+
+      console.log("Diagnostics:", result.diagnostics);
+
+      if (result.diagnostics.length > 0) {
         setConsoleMessages(messages);
-        setAssembled(true);
+        setAssembled(false);
+        return;
       }
+
+      messages.push({
+        type: "info",
+        text: "Assembly successful.",
+      });
+
+      setConsoleMessages(messages);
 
       emulatorSession.load(result.code);
       setState(emulatorSession.getState());
+      setAssembled(true);
     } catch (error) {
       console.error(error);
     }
   };
 
+  // For the Step button in the UI
   const handleStep = () => {
     emulatorSession.step();
     const s = emulatorSession.getState();
@@ -54,11 +66,13 @@ export default function App() {
     setState(s);
   };
 
+  // For the Run button in the UI
   const handleRun = () => {
     emulatorSession.run();
     setState(emulatorSession.getState());
   };
 
+  // For the Reset button in the UI
   const handleReset = () => {
     emulatorSession.reset();
     setConsoleMessages([
@@ -71,20 +85,42 @@ export default function App() {
   };
 
   return (
-    <AppLayout>
+    <>
       <Header />
-      <AssemblyEditor source={source} onChange={setSource} />
-      <ExecutionControls
-        assembled={assembled}
-        onAssemble={handleAssemble}
-        onStep={handleStep}
-        onRun={handleRun}
-        onReset={handleReset}
+      <AppLayout
+        // Assembly code editor
+        editor={<AssemblyEditor source={source} onChange={setSource} />}
+        controls={
+          <ExecutionControls
+            assembled={assembled}
+            onAssemble={handleAssemble}
+            onStep={handleStep}
+            onRun={handleRun}
+            onReset={handleReset}
+          />
+        }
+        // Console to convey messages to the user
+        console={<Console messages={consoleMessages} />}
+        // Panel to show the state of the registers and flags
+        state={
+          <CpuStatePanel
+            registers={state.registers}
+            flags={state.flags}
+            emulatorSession={emulatorSession}
+            refreshState={() => setState(emulatorSession.getState())}
+          />
+        }
+        // View of the program instructions
+        program={<ProgramView state={state} />}
+        // View of the memory addresses
+        memory={
+          <MemoryView
+            memory={state.memory}
+            emulatorSession={emulatorSession}
+            setState={setState}
+          />
+        }
       />
-      <Console messages={consoleMessages} />
-      <CpuStatePanel registers={state.registers} flags={state.flags} />
-      <ProgramView state={state} />
-      <MemoryView state={state} />
-    </AppLayout>
+    </>
   );
 }

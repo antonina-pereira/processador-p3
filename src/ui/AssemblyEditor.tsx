@@ -1,5 +1,5 @@
-import Editor from "@monaco-editor/react";
-import { registerAsmLanguage } from "../utils/registerAsmLanguage";
+import CodeMirror from "@uiw/react-codemirror";
+import { oneDark } from "@codemirror/theme-one-dark";
 
 interface AssemblyEditorProps {
   source: string;
@@ -8,25 +8,27 @@ interface AssemblyEditorProps {
 
 export function AssemblyEditor({ source, onChange }: AssemblyEditorProps) {
   return (
-    <Editor
-      height="500px"
-      defaultLanguage="asm"
-      beforeMount={(monaco) => {
-        registerAsmLanguage(monaco);
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        flex: 1,
+        minHeight: 0,
+        minWidth: 0,
+        background: "red",
       }}
-      value={source}
-      onChange={(value) => onChange(value ?? "")}
-      options={{
-        minimap: {
-          enabled: false,
-        },
-        fontSize: 14,
-        lineNumbers: "on",
-        roundedSelection: false,
-        scrollBeyondLastLine: false,
-        automaticLayout: true,
-        tabSize: 2,
-      }}
-    />
+    >
+      <CodeMirror
+        value={source}
+        height="100%"
+        width="100%"
+        theme={oneDark}
+        basicSetup={{
+          lineNumbers: true,
+          foldGutter: false,
+        }}
+        onChange={(value) => onChange(value)}
+      />
+    </div>
   );
 }

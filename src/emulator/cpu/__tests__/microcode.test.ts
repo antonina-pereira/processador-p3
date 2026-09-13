@@ -24,4 +24,13 @@ describe("Microcode", () => {
     expect(allOps).toContain(MicroOp.EXEC_ALU);
     expect(allOps).toContain(MicroOp.WRITEBACK_RESULT);
   });
+
+  it("BR opcode contains UPDATE_PC_FROM_ALU", () => {
+    const seq = getMicrocode(0x38);
+
+    const allOps = seq.flatMap((step) => step.ops);
+
+    expect(allOps).toContain(MicroOp.EXEC_ALU);
+    expect(allOps).toContain(MicroOp.UPDATE_PC_FROM_ALU);
+  });
 });

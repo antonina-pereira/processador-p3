@@ -12,6 +12,7 @@ export const AluOp = {
   CMP: "CMP",
   COM: "COM",
   MOV: "MOV",
+  INC: "INC",
 } as const;
 
 export type AluOp = (typeof AluOp)[keyof typeof AluOp];
@@ -70,6 +71,9 @@ export function executeAlu(op: AluOp, a: number, b: number): AluResult {
     // ADD: a + b
     // Updates: O, N, C, Z
     case "ADD": {
+      // DEBUG
+      console.log("ALU a", a);
+      console.log("ALU b", b);
       const sum = a + b;
       const result = to16(sum);
 
@@ -149,7 +153,7 @@ export function executeAlu(op: AluOp, a: number, b: number): AluResult {
         isNegative16(result) !== isNegative16(a);
 
       return {
-        result, // Control-unit should use this result
+        result, // Control unit uses this result
         flags: computeFlags(result, { carry, overflow }),
       };
     }
@@ -166,6 +170,7 @@ export function executeAlu(op: AluOp, a: number, b: number): AluResult {
     }
 
     // MOV
+    // Sets flags to false
     case "MOV": {
       return {
         result: b,
@@ -175,6 +180,16 @@ export function executeAlu(op: AluOp, a: number, b: number): AluResult {
           Z: false,
           N: false,
         },
+      };
+    }
+
+    // INC
+    // Updates: N, Z, O
+    case "INC": {
+      const result = a + 1;
+      return {
+        result,
+        flags: computeFlags(result),
       };
     }
 

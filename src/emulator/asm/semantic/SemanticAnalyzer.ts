@@ -13,7 +13,7 @@ export interface AnalysisResult {
 export class SemanticAnalyzer {
   private readonly symbols = new SymbolTable();
 
-  private readonly diagnostics: Diagnostic[] = [];
+  public readonly diagnostics: Diagnostic[] = [];
 
   private currentAddress = 0;
 
@@ -22,10 +22,10 @@ export class SemanticAnalyzer {
     this.buildSymbolTable(program);
     // Pass 2: check for undefined symbols
     this.checkUndefinedSymbols(program);
-    // Pass 3: instruction and directive validation
-    this.validateProgram(program);
-    // Pass 4: assign addresses
+    // Pass 3: assign addresses (need addresses for branch resolution)
     this.assignAddress(program);
+    // Pass 4: instruction and directive validation (including branch resolution)
+    this.validateProgram(program);
 
     return {
       symbols: this.symbols,
@@ -33,6 +33,7 @@ export class SemanticAnalyzer {
     };
   }
 
+  // PASS 1
   private buildSymbolTable(program: AST.ProgramNode): void {
     for (const statement of program.statements) {
       this.buildStatement(statement);
@@ -107,6 +108,7 @@ export class SemanticAnalyzer {
     }
   }
 
+  // PASS 2
   private defineSymbol(symbol: SymbolEntry): void {
     if (!this.symbols.define(symbol)) {
       this.diagnostics.push({
@@ -117,8 +119,6 @@ export class SemanticAnalyzer {
 
       return;
     }
-
-    console.log(this.symbols.entries());
   }
 
   private checkUndefinedSymbols(program: AST.ProgramNode): void {
@@ -132,7 +132,6 @@ export class SemanticAnalyzer {
       this.checkInstruction(statement);
       return;
     }
-
     this.checkDirective(statement);
   }
 
@@ -144,12 +143,22 @@ export class SemanticAnalyzer {
 
   private checkOperand(operand: AST.OperandNode): void {
     if ("name" in operand) {
-      if (!this.symbols.exists(operand.name)) {
+      const symbol = this.symbols.lookup(operand.name);
+
+      if (!symbol) {
         this.diagnostics.push({
           line: operand.line,
           column: operand.column,
           message: `Undefined symbol '${operand.name}'.`,
         });
+        return;
+      }
+
+      // If the symbol is a constant (like in EQU) or has a numeric value, resolve the operand immediately to that numeric value
+      // Later checks as if it is a ConstantNode
+      if (symbol.value !== undefined) {
+        // Annotate the operand
+        (operand as any).value = symbol.value;
       }
     }
   }
@@ -177,16 +186,201 @@ export class SemanticAnalyzer {
     }
   }
 
+  // PASS 3
+  private assignAddress(program: AST.ProgramNode): void {
+    // reset currentAddress before assigning (in case analyzer reused)
+    this.currentAddress = 0x8000;
+
+    for (const statement of program.statements) {
+      this.assignStatementAddress(statement);
+    }
+  }
+
+  private assignStatementAddress(statement: AST.StatementNode): void {
+    if ("mnemonic" in statement) {
+      this.assignInstructionAddress(statement as AST.InstructionNode);
+    } else {
+      this.assignDirectiveAddress(statement as AST.DirectiveNode);
+    }
+  }
+
+  private assignInstructionAddress(instruction: AST.InstructionNode): void {
+    if (instruction.label) {
+      this.assignSymbolValue(instruction.label.name, this.currentAddress);
+    }
+
+    // set the instruction address on the node if not set already (helpful for branch resolution)
+    (instruction as any).address = this.currentAddress;
+
+    // assuming fixed-size of 1 for instruction unless previously computed / known
+    if ((instruction as any).size === undefined) {
+      (instruction as any).size = 1;
+    }
+
+    this.currentAddress += (instruction as any).size;
+  }
+
+  private assignDirectiveAddress(directive: AST.DirectiveNode): void {
+    switch (directive.type) {
+      case "ORIG":
+        this.currentAddress = this.resolveOrigValue(directive.address);
+        break;
+
+      case "WORD":
+        this.assignVariable(directive.label.name);
+        this.currentAddress += 1;
+        break;
+
+      case "TAB":
+        this.assignVariable(directive.label.name);
+        this.currentAddress += directive.value.value;
+        break;
+
+      case "STR":
+        this.assignVariable(directive.label.name);
+        this.currentAddress += directive.values.length;
+        break;
+
+      case "EQU":
+        break;
+    }
+  }
+
+  private resolveOrigValue(
+    value: AST.ConstantNode | AST.LabelReferenceNode,
+  ): number {
+    if ("value" in value) {
+      return value.value;
+    }
+
+    const symbol = this.symbols.lookup(value.name);
+
+    // checks for undefined (0 is valid)
+    if (!symbol || symbol.value === undefined) {
+      throw new Error(`Unable to resolve '${value.name}'.`);
+    }
+
+    return symbol.value;
+  }
+
+  private assignVariable(name: string): void {
+    this.assignSymbolValue(name, this.currentAddress);
+  }
+
+  private assignSymbolValue(name: string, value: number): void {
+    this.symbols.updateValue(name, value);
+  }
+
+  private resolveBranch(instruction: AST.InstructionNode): void {
+    const operand = instruction.operands[0] as AST.OperandNode | undefined;
+
+    if (!operand) {
+      this.diagnostics.push({
+        line: instruction.line,
+        column: instruction.column,
+        message: `${instruction.mnemonic} requires a target label.`,
+      });
+      return;
+    }
+
+    if (!("name" in operand)) {
+      this.diagnostics.push({
+        line: instruction.line,
+        column: instruction.column,
+        message: "Branch operand must be a label",
+      });
+
+      return;
+    }
+
+    const symbol = this.symbols.lookup(operand.name);
+
+    if (!symbol) {
+      this.diagnostics.push({
+        line: operand.line,
+        column: operand.column,
+        message: `Undefined label '${operand.name}'`,
+      });
+
+      return;
+    }
+
+    if (symbol.value === undefined) {
+      this.diagnostics.push({
+        line: operand.line,
+        column: operand.column,
+        message: `Label '${operand.name}' has no assigned address yet.`,
+      });
+      return;
+    }
+
+    const targetAddress = symbol.value;
+
+    // Ensure instruction has an address & size
+    const instrAddress = (instruction as any).address;
+    const instrSize = (instruction as any).size;
+
+    if (typeof instrAddress !== "number" || typeof instrSize !== "number") {
+      this.diagnostics.push({
+        line: instruction.line,
+        column: instruction.column,
+        message:
+          `Cannot resolve branch for '${instruction.mnemonic}' because ` +
+          `instruction address or size is missing.`,
+      });
+      return;
+    }
+
+    // Assumes PC points to the next instruction.
+    const nextInstructionAddress = instrAddress + instrSize;
+
+    const offset = targetAddress - nextInstructionAddress;
+
+    // Chooses ranges per mnemonic
+    // CALL/JMP has signed 16-bit offset
+    let minOffset = -32768;
+    let maxOffset = 32767;
+
+    // BR has signed 8-bit offset
+    if (instruction.mnemonic === "BR") {
+      minOffset = -128;
+      maxOffset = 127;
+    }
+
+    if (offset < minOffset || offset > maxOffset) {
+      this.diagnostics.push({
+        line: instruction.line,
+        column: instruction.column,
+        message: `Branch target '${operand.name}' is out of range for ${instruction.mnemonic} (${offset}).`,
+      });
+
+      return;
+    }
+
+    (operand as any).address = {
+      value: targetAddress,
+    };
+
+    // store resolved offset on instruction node for later passes (emission)
+    (instruction as any).resolvedOffset = offset;
+  }
+
+  // PASS 4
   private validateInstruction(instruction: AST.InstructionNode): void {
+    // Branch instructions go through branch resolution
+    if (
+      instruction.mnemonic === "BR" ||
+      instruction.mnemonic === "CALL" ||
+      instruction.mnemonic === "JMP"
+    ) {
+      this.resolveBranch(instruction);
+      // continue with other checks
+      return;
+    }
+
     const op0 = instruction.operands[0] as AST.ConstantNode;
 
     switch (instruction.mnemonic) {
-      //case "BR" | "CALL" | "JMP":
-      //if () {
-      //  this.resolveBranch(instruction, );
-      //}
-      // break;
-
       case "INT":
         if (op0.value < 0 || op0.value > 255) {
           this.diagnostics.push({
@@ -360,121 +554,5 @@ export class SemanticAnalyzer {
         break;
       }
     }
-  }
-  private assignAddress(program: AST.ProgramNode): void {
-    for (const statement of program.statements) {
-      this.assignStatementAddress(statement);
-    }
-  }
-
-  private assignStatementAddress(statement: AST.StatementNode): void {
-    if ("mnemonic" in statement) {
-      this.assignInstructionAddress(statement as AST.InstructionNode);
-    }
-
-    this.assignDirectiveAddress(statement as AST.DirectiveNode);
-  }
-
-  private assignInstructionAddress(instruction: AST.InstructionNode): void {
-    if (instruction.label) {
-      this.assignSymbolValue(instruction.label.name, this.currentAddress);
-    }
-
-    this.currentAddress += 1;
-  }
-
-  private assignDirectiveAddress(directive: AST.DirectiveNode): void {
-    switch (directive.type) {
-      case "ORIG":
-        this.currentAddress = this.resolveOrigValue(directive.address);
-        break;
-
-      case "WORD":
-        this.assignVariable(directive.label.name);
-        this.currentAddress += 1;
-        break;
-
-      case "TAB":
-        this.assignVariable(directive.label.name);
-        this.currentAddress += directive.value.value;
-        break;
-
-      case "STR":
-        this.assignVariable(directive.label.name);
-        this.currentAddress += directive.values.length;
-        break;
-
-      case "EQU":
-        break;
-    }
-  }
-
-  private resolveOrigValue(
-    value: AST.ConstantNode | AST.LabelReferenceNode,
-  ): number {
-    if ("value" in value) {
-      return value.value;
-    }
-
-    const symbol = this.symbols.lookup(value.name);
-
-    if (!symbol?.value) {
-      throw new Error(`Unable to resolve '${value.name}'.`);
-    }
-
-    return symbol.value;
-  }
-
-  private assignVariable(name: string): void {
-    this.assignSymbolValue(name, this.currentAddress);
-  }
-
-  private assignSymbolValue(name: string, value: number): void {
-    this.symbols.updateValue(name, value);
-  }
-
-  private resolveBranch(instruction: AST.InstructionNode): void {
-    const operand = instruction.operands[0] as AST.OperandNode;
-
-    if (!("name" in operand)) {
-      this.diagnostics.push({
-        line: instruction.line,
-        column: instruction.column,
-        message: "Branch operand must be a label",
-      });
-
-      return;
-    }
-
-    const targetAddress = this.symbols.get(operand.name);
-
-    if (targetAddress === undefined) {
-      this.diagnostics.push({
-        line: instruction.line,
-        column: instruction.column,
-        message: `Undefined label '${operand.name}'`,
-      });
-
-      return;
-    }
-
-    // Assuming PC points to the next instruction.
-    const nextInstructionAddress = instruction.address + instruction.size;
-
-    const offset = targetAddress - nextInstructionAddress;
-
-    // Example: signed 8-bit branch
-    if (offset < -128 || offset > 127) {
-      this.diagnostics.push({
-        line: instruction.line,
-        column: instruction.column,
-        message:
-          `Branch target '${operand.name}' is out of range ` + `(${offset})`,
-      });
-
-      return;
-    }
-
-    instruction.resolvedOffset = offset;
   }
 }

@@ -2,10 +2,8 @@ import { describe, it, expect, vi } from "vitest";
 import Memory from "../memory";
 import { decodeInstruction } from "../decoder";
 import { AddressingMode, OperandType } from "../instruction-format";
-import { InstructionSet } from "../instruction-set";
-import { RegisterIndex } from "../registers";
 
-// Mock a tiny instruction set
+// Mock a instruction set
 vi.mock("./instruction-set", () => ({
   InstructionSet: {
     0x21: { mnemonic: "ADD", operandCount: 2, OperandType: "register" },
@@ -73,9 +71,9 @@ describe("decoder", () => {
     const word = opcode | S | regReg | M | regModo;
 
     // extension word for immediate value
-    memory.writeWord(0x0002, 0x1234);
+    memory.writeWord(0x8002, 0x1234);
 
-    const decoded = decodeInstruction(word, memory, 0x0000);
+    const decoded = decodeInstruction(word, memory, 0x8000);
 
     expect(decoded.operands[0]).toEqual({
       type: OperandType.Register,
@@ -108,9 +106,9 @@ describe("decoder", () => {
     const word = opcode | S | regReg | M | regModo;
 
     // extension word = direct address
-    memory.writeWord(0x0002, 0x5555);
+    memory.writeWord(0x8002, 0x5555);
 
-    const decoded = decodeInstruction(word, memory, 0x0000);
+    const decoded = decodeInstruction(word, memory, 0x8000);
 
     expect(decoded.operands[0]).toEqual({
       type: OperandType.Register,
@@ -143,9 +141,9 @@ describe("decoder", () => {
     const word = opcode | S | regReg | M | regModo;
 
     // extension word = displacement
-    memory.writeWord(0x0002, 0x0100);
+    memory.writeWord(0x8002, 0x0100);
 
-    const decoded = decodeInstruction(word, memory, 0x0000);
+    const decoded = decodeInstruction(word, memory, 0x8000);
 
     expect(decoded.operands[0]).toEqual({
       type: OperandType.Register,
@@ -182,9 +180,9 @@ describe("decoder", () => {
     const word = opcode | S | regReg | M | regModo;
 
     // extension word = displacement
-    memory.writeWord(0x0002, 0x0004);
+    memory.writeWord(0x8002, 0x0004);
 
-    const decoded = decodeInstruction(word, memory, 0x0000);
+    const decoded = decodeInstruction(word, memory, 0x8000);
 
     expect(decoded.operands[0]).toEqual({
       type: OperandType.Register,

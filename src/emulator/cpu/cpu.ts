@@ -1,4 +1,4 @@
-// CPU.ts
+// cpu.ts
 // Provides a step, reset, load program, and get state.
 
 import Memory from "./memory";
@@ -6,9 +6,15 @@ import { Registers } from "./registers";
 import { Flags } from "./flags";
 import { ControlUnit } from "./control-unit";
 import type { CpuState } from "./cpu-state";
+import {
+  MAIN_MEMORY_START,
+  MAIN_MEMORY_END,
+  STACK_MEMORY_START,
+  STACK_MEMORY_END,
+} from "./memory";
 
 export class Cpu {
-  private readonly memory: Memory;
+  public memory: Memory;
   private readonly registers: Registers;
   private readonly flags: Flags;
   private readonly controlUnit: ControlUnit;
@@ -34,15 +40,18 @@ export class Cpu {
     this.memory.clear();
   }
 
-  public loadProgram(program: number[], origin = 0): void {
-    this.memory.loadProgram(program, origin);
+  public loadProgram(program: number[]): void {
+    this.memory.loadProgram(program);
   }
 
   public getState(): CpuState {
     return {
       registers: this.registers.dump(),
       flags: this.flags.dump(),
-      memory: this.memory.dumpWords(0, 0x003e), // returns 32 words
+      memory: [
+        ...this.memory.dumpWords(MAIN_MEMORY_START, MAIN_MEMORY_END),
+        ...this.memory.dumpWords(STACK_MEMORY_START, STACK_MEMORY_END),
+      ],
     };
   }
 

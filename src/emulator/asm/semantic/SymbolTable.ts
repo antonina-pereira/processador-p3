@@ -1,4 +1,5 @@
 // SymbolTable.ts
+// Creates a record of the symbols used in the program
 
 // Types of user defined symbols
 export type SymbolType =

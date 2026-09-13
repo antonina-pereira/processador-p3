@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { expect, it } from "vitest";
 import { EmulatorSession } from "../emulator";
 
 it("assembles, loads and returns state", () => {

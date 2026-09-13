@@ -12,12 +12,12 @@ import type {
 it("builds a ProgramNode for a simple instruction", () => {
   const { tree } = parseAssembly("NOP");
 
-  const ast = buildAst(tree as ProgramContext);
+  const astResult = buildAst(tree as ProgramContext);
 
-  console.log(JSON.stringify(ast, null, 2));
+  console.log(JSON.stringify(astResult, null, 2));
 
-  expect(ast).toBeDefined();
-  expect(ast.statements).toHaveLength(1);
+  expect(astResult).toBeDefined();
+  expect(astResult.ast.statements).toHaveLength(1);
 });
 
 it("builds a WORD directive followed by an instruction", () => {
@@ -26,12 +26,12 @@ COUNT WORD 0
 NOP
 `);
 
-  const ast = buildAst(tree as ProgramContext);
+  const astResult = buildAst(tree as ProgramContext);
 
-  console.log(JSON.stringify(ast, null, 2));
+  console.log(JSON.stringify(astResult.ast, null, 2));
 
-  const wordDirective = ast.statements[0] as WordDirNode;
-  const instruction = ast.statements[1] as InstructionNode;
+  const wordDirective = astResult.ast.statements[0] as WordDirNode;
+  const instruction = astResult.ast.statements[1] as InstructionNode;
 
   expect(wordDirective.label.name).toBe("COUNT");
   expect(wordDirective.value.value).toBe(0);
@@ -49,22 +49,22 @@ Loop:
     BR.NZ Loop
 `);
 
-  const ast = buildAst(tree as ProgramContext);
-  console.log(JSON.stringify(ast, null, 2));
-  expect(ast.statements).toHaveLength(3);
+  const astResult = buildAst(tree as ProgramContext);
+  console.log(JSON.stringify(astResult.ast, null, 2));
+  expect(astResult.ast.statements).toHaveLength(3);
 
   // ORIG
-  expect(ast.statements[0]).toHaveProperty("address");
+  expect(astResult.ast.statements[0]).toHaveProperty("address");
 
   // ADD instruction
-  const add = ast.statements[1] as InstructionNode;
+  const add = astResult.ast.statements[1] as InstructionNode;
 
   expect(add.label?.name).toBe("Loop");
   expect(add.mnemonic).toBe("ADD");
   expect(add.operands).toHaveLength(2);
 
   // BR.NZ
-  const branch = ast.statements[2] as InstructionNode;
+  const branch = astResult.ast.statements[2] as InstructionNode;
 
   expect(branch.mnemonic).toBe("BR");
   expect(branch.condition).toBe("NZ");

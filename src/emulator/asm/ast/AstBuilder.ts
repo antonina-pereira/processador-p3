@@ -34,12 +34,21 @@ import {
 import asmVisitor from "../grammar/asmVisitor.ts";
 
 import * as AST from "./nodes";
-import type { ConditionCode } from "../../cpu/conditions.ts";
+import type { Diagnostic } from "../semantic/Diagnostic.ts";
 
 export class AstBuilder
   extends ParseTreeVisitor<AST.AstNode>
   implements asmVisitor<AST.AstNode>
 {
+  // Creates error messages
+  public readonly diagnostics: Diagnostic[] = [];
+  private error(message: string, line: number, column: number): void {
+    this.diagnostics.push({
+      message,
+      line,
+      column,
+    });
+  }
   protected defaultResult(): unknown {
     return undefined;
   }
@@ -171,9 +180,32 @@ export class AstBuilder
   }
 
   visitTwoOpInst(ctx: TwoOpInstContext): AST.InstructionNode {
-    const leftOperand = this.visit(ctx.operand(0)) as AST.OperandNode;
-    const rightOperand = this.visit(ctx.operand(1)) as AST.OperandNode;
-
+    const leftCtx = ctx.operand(0);
+    const rightCtx = ctx.operand(1);
+    if (!leftCtx) {
+      this.error(
+        "Missing destination operand.",
+        ctx.start.line,
+        ctx.start.column,
+      );
+      return {
+        line: ctx.start.line,
+        column: ctx.start.column,
+        mnemonic: ctx.twoOpMnemonic().getText(),
+        operands: [],
+      };
+    }
+    if (!rightCtx) {
+      this.error("Missing source operand.", ctx.start.line, ctx.start.column);
+      return {
+        line: ctx.start.line,
+        column: ctx.start.column,
+        mnemonic: ctx.twoOpMnemonic().getText(),
+        operands: [],
+      };
+    }
+    const leftOperand = this.visit(leftCtx) as AST.OperandNode;
+    const rightOperand = this.visit(rightCtx) as AST.OperandNode;
     return {
       line: ctx.start.line,
       column: ctx.start.column,

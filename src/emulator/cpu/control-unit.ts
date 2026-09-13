@@ -64,6 +64,16 @@ export class ControlUnit {
           this.op1 = this.readOperand(decoded.operands[0]);
           break;
 
+        case "LOAD_OP1_ADDRESS":
+          const operand = decoded.operands[0];
+
+          if (operand.type !== "direct") {
+            throw new Error("Expected direct operand for jump");
+          }
+
+          this.op1 = operand.address;
+          break;
+
         case "LOAD_OP2":
           this.op2 = this.readOperand(decoded.operands[1]);
           break;

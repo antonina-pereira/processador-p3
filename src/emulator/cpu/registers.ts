@@ -2,6 +2,8 @@
 // Defines general purpose and special registers
 // Implements helper functions
 
+import { STACK_MEMORY_END, MAIN_MEMORY_START } from "./memory";
+
 export type RegisterName =
   // R0-R7 multipurpose registers
   | "R0"
@@ -48,9 +50,10 @@ export const IndexToRegister: RegisterName[] = [
 
 export class Registers {
   private values: Record<RegisterName, number>;
-  // Initializes all registers to zero
+  // Initializes all registers to zero except for PC that points to the start of the main memory zone and SP that points to the top of the stack
   constructor() {
     this.values = {
+      // R0-R7 multipurpose registers
       R0: 0,
       R1: 0,
       R2: 0,
@@ -59,9 +62,9 @@ export class Registers {
       R5: 0,
       R6: 0,
       R7: 0,
-      PC: 0,
-      SP: 0,
-      RE: 0,
+      PC: MAIN_MEMORY_START, // Program counter, has the address of the next instruction to execute
+      SP: STACK_MEMORY_END - 1, // Stack pointer, points to the top of the stack
+      RE: 0, // State register, saves the flags
     };
   }
 
@@ -101,6 +104,8 @@ export class Registers {
     for (const key in this.values) {
       this.values[key as RegisterName] = 0;
     }
+    this.values.SP = STACK_MEMORY_END - 1;
+    this.values.PC = MAIN_MEMORY_START;
   }
 
   // Gets the values for all registers

@@ -10,9 +10,16 @@ describe("Registers", () => {
 
   test("initializes all registers to zero", () => {
     const snapshot = regs.dump();
-    for (const key in snapshot) {
-      expect(snapshot[key as keyof typeof snapshot]).toBe(0);
-    }
+    expect(snapshot.PC).toBe(0x8000);
+    expect(snapshot.SP).toBe(0xfeff - 1);
+    expect(snapshot.R0).toBe(0);
+    expect(snapshot.R1).toBe(0);
+    expect(snapshot.R2).toBe(0);
+    expect(snapshot.R3).toBe(0);
+    expect(snapshot.R4).toBe(0);
+    expect(snapshot.R5).toBe(0);
+    expect(snapshot.R6).toBe(0);
+    expect(snapshot.R7).toBe(0);
   });
 
   test("writes and reads register values", () => {
@@ -31,9 +38,17 @@ describe("Registers", () => {
     regs.reset();
 
     const snapshot = regs.dump();
-    for (const key in snapshot) {
-      expect(snapshot[key as keyof typeof snapshot]).toBe(0);
-    }
+
+    expect(snapshot.PC).toBe(0x8000);
+    expect(snapshot.SP).toBe(0xfeff - 1);
+    expect(snapshot.R0).toBe(0);
+    expect(snapshot.R1).toBe(0);
+    expect(snapshot.R2).toBe(0);
+    expect(snapshot.R3).toBe(0);
+    expect(snapshot.R4).toBe(0);
+    expect(snapshot.R5).toBe(0);
+    expect(snapshot.R6).toBe(0);
+    expect(snapshot.R7).toBe(0);
   });
 
   test("dump returns a copy, not a reference", () => {
@@ -41,6 +56,6 @@ describe("Registers", () => {
     snapshot.SP = 999;
 
     // internal state should not change
-    expect(regs.read("SP")).toBe(0);
+    expect(regs.read("SP")).toBe(0xfeff - 1);
   });
 });

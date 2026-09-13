@@ -1,5 +1,3 @@
-// ui/sections/Console/Console.tsx
-
 import type { ConsoleMessage } from "./console-message";
 
 interface ConsoleProps {

@@ -14,7 +14,7 @@ test("ADD R1, R2 updates register and flags", () => {
   // Initial values
   registers.write("R1", 5);
   registers.write("R2", 3);
-  registers.setPC(0);
+  registers.setPC(0x8000);
 
   // Encode ADD R1, R2
   const instruction =
@@ -23,15 +23,15 @@ test("ADD R1, R2 updates register and flags", () => {
     (0b00 << 4) |
     2; // R2
 
-  memory.writeWord(0, instruction);
+  memory.writeWord(0x8000, instruction);
 
   // Execute one instruction
   cpu.step();
 
-  // ✅ Check result
+  // Check result
   expect(registers.read("R1")).toBe(8);
 
-  // ✅ Flags
+  // Flags
   expect(flags.Z).toBe(false);
   expect(flags.N).toBe(false);
 });
@@ -47,7 +47,7 @@ test("ADD with overflow wraps correctly and sets flags", () => {
   // R2 = 1 → causes overflow
   registers.write("R1", 0xffff);
   registers.write("R2", 1);
-  registers.setPC(0);
+  registers.setPC(0x8000);
 
   // Encode ADD R1, R2
   const instruction =
@@ -56,14 +56,14 @@ test("ADD with overflow wraps correctly and sets flags", () => {
     (0b00 << 4) |
     2; // R2
 
-  memory.writeWord(0, instruction);
+  memory.writeWord(0x8000, instruction);
 
   cpu.step();
 
-  // ✅ Result wraps to 0
+  // Result wraps to 0
   expect(registers.read("R1")).toBe(0);
 
-  // ✅ Flags
+  // Flags
   expect(flags.Z).toBe(true); // result is zero
   expect(flags.N).toBe(false); // not negative
   expect(flags.C).toBe(true); // carry occurred
@@ -77,7 +77,7 @@ test("ADD with immediate operand uses extension word", () => {
   const cpu = new ControlUnit(memory, registers, flags);
 
   registers.write("R1", 10);
-  registers.write("PC", 0);
+  registers.write("PC", 0x8000);
 
   // Encode ADD R1, immediate
   // M = 10 (immediate)
@@ -87,20 +87,20 @@ test("ADD with immediate operand uses extension word", () => {
     (0b10 << 4) | // immediate mode
     0; // regMode not used
 
-  memory.writeWord(0, instruction);
+  memory.writeWord(0x8000, instruction);
 
   // Extension word (immediate value)
-  memory.writeWord(2, 5);
+  memory.writeWord(0x8002, 5);
 
   cpu.step();
 
-  // ✅ Result
+  // Result
   expect(registers.read("R1")).toBe(15);
 
-  // ✅ Flags
+  // Flags
   expect(flags.Z).toBe(false);
   expect(flags.N).toBe(false);
 
-  // ✅ PC advanced by 4 bytes (2 words)
-  expect(registers.read("PC")).toBe(4);
+  // PC advanced by 4 bytes (2 words)
+  expect(registers.read("PC")).toBe(0x8004);
 });
